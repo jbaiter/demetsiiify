@@ -20,6 +20,14 @@ larencontrefortuitesurunetablededissectiond'unemachineàcoudreetd'unparapluie
 """
 
 
+def _force_preferred_scheme():
+    if app.config['PREFERRED_URL_SCHEME'] == 'https':
+        from flask import _request_ctx_stack
+        if _request_ctx_stack is not None:
+            reqctx = _request_ctx_stack.top
+            reqctx.url_adapter.url_scheme = 'https'
+
+
 def make_app():
     app = Flask(__name__)
     app.config['PREFERRED_URL_SCHEME'] = os.environ.get(
@@ -50,6 +58,7 @@ def make_celery(app):
 
 
 app = make_app()
+app.before_request(_force_preferred_scheme)
 db.init_app(app)
 celery = make_celery(app)
 
