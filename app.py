@@ -147,7 +147,7 @@ def view_status(task_id):
 def api_import():
     mets_url = request.json.get('url')
     task = import_mets_job.apply_async((mets_url,))
-    status_url = url_for('api_task_status', task_id=task.id)
+    status_url = url_for('api_task_status', task_id=task.id, _external=True)
     response = jsonify({'status': status_url})
     response.status_code = 202
     response.headers['Location'] = status_url

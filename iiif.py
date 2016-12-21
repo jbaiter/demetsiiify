@@ -27,7 +27,8 @@ def make_info_data(identifier, sizes):
     max_width, max_height = max(sizes)
     return {
         '@context': 'http://iiif.io/api/image/2/context.json',
-        '@id': 'http://{}/iiif/image/{}'.format(
+        '@id': '{}://{}/iiif/image/{}'.format(
+            current_app.config['PREFERRED_URL_SCHEME'],
             current_app.config['SERVER_NAME'], identifier),
         'protocol': 'http://iiif.io/api/image',
         'profile': ['http://iiif.io/api/image/2/level0.json'],
@@ -69,11 +70,14 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
                   thumbs_map):
     manifest_factory = ManifestFactory()
 
-    manifest_ident = 'http://{}/iiif/{}/manifest'.format(
+    manifest_ident = '{}://{}/iiif/{}/manifest'.format(
+        current_app.config['PREFERRED_URL_SCHEME'],
         current_app.config['SERVER_NAME'], ident)
-    manifest_factory.set_base_prezi_uri('http://{}/iiif/{}'.format(
+    manifest_factory.set_base_prezi_uri('{}://{}/iiif/{}'.format(
+        current_app.config['PREFERRED_URL_SCHEME'],
         current_app.config['SERVER_NAME'], ident))
-    manifest_factory.set_base_image_uri('http://{}/iiif/image'.format(
+    manifest_factory.set_base_image_uri('{}://{}/iiif/image'.format(
+        current_app.config['PREFERRED_URL_SCHEME'],
         current_app.config['SERVER_NAME']))
     manifest_factory.set_iiif_image_info('2.0', 0)
 
@@ -103,7 +107,8 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
         canvas.thumbnail = url_for(
             'get_image', image_uuid=image_id, region='full',
             size="{},{}".format(thumb_width, thumb_height),
-            rotation='0', quality='default', format='jpg')
+            rotation='0', quality='default', format='jpg',
+            _external=True)
         phys_to_canvas[phys_id] = canvas.id
     _add_toc_ranges(manifest, toc_entries, phys_to_canvas)
     return manifest.toJSON(top=True)
