@@ -1,5 +1,6 @@
 import functools
 import mimetypes
+import os
 import time
 from collections import deque, OrderedDict
 from urllib.parse import urlparse
@@ -14,14 +15,17 @@ import iiif
 import ingest as mets
 from storage import db, Manifest, IIIFImage, Image
 
+DEFAULT_SECRET = """
+larencontrefortuitesurunetablededissectiond'unemachineàcoudreetd'unparapluie
+"""
+
 
 def make_app():
     app = Flask(__name__)
-    app.clients = {}
-    app.config['SERVER_NAME'] = 'localhost:5000'
-    app.config['SECRET_KEY'] = """
-    larencontrefortuitesurunetablededissectiond'unemachineàcoudreetd'unparapluie
-    """
+    app.config['PREFERRED_URL_SCHEME'] = os.environ.get(
+        'PREFERRED_URL_SCHEME', 'http')
+    app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'localhost:5000')
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', DEFAULT_SECRET)
     app.config['CELERY_BROKER_URL'] = 'redis://redis:6379/0'
     app.config['CELERY_RESULT_BACKEND'] = 'redis://redis:6379/0'
     app.config['SQLALCHEMY_DATABASE_URI'] = (
@@ -47,8 +51,6 @@ def make_celery(app):
 
 app = make_app()
 db.init_app(app)
-with app.app_context():
-    db.create_all()
 celery = make_celery(app)
 
 
@@ -131,7 +133,8 @@ def view_endpoint(mets):
 
 @app.route('/')
 def index():
-    return jsonify({'hello': 'world'})
+    return jsonify({'scheme': app.config['PREFERRED_URL_SCHEME'],
+                    'server_name': app.config['SERVER_NAME']})
 
 
 @app.route('/status/<task_id>')

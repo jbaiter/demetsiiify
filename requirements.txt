@@ -8,3 +8,5 @@ psycopg2
 shortuuid
 requests
 redis
+sickle
+gunicorn
