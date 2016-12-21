@@ -1,0 +1,10 @@
+Flask
+Flask-SQLAlchemy
+Celery
+wand
+lxml==3.6.4  # 3.7.0 does not have wheels yet
+iiif-prezi
+psycopg2
+shortuuid
+requests
+redis

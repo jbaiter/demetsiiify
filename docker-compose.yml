@@ -1,0 +1,30 @@
+version: '2'
+services:
+  postgres:
+    image: postgres:alpine
+
+  redis:
+    image: redis:alpine
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - .:/code
+    links:
+      - postgres
+      - redis
+
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/code
+    links:
+      - postgres
+      - redis
+      - worker
