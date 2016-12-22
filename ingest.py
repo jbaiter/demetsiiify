@@ -5,6 +5,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from wand.image import Image
 
+import storage
+
 NAMESPACES = {
     'mets': 'http://www.loc.gov/METS/',
     'mods': 'http://www.loc.gov/mods/v3',
@@ -96,11 +98,14 @@ def get_metadata(mets_tree, mets_url=None):
 
 def get_file_infos(mets_tree, jpeg_only=False):
     _, findall, _ = _make_helpers(mets_tree)
+    mets_info = [(id_, location, mimetype, storage.Image.by_url(location))
+                 for id_, location, mimetype in
+                 (get_image_location(e) for e in findall(".//mets:file"))]
     with ThreadPoolExecutor(max_workers=4) as pool:
-        futs = [pool.submit(image_info, e)
-                for e in findall(".//mets:file")
-                if not jpeg_only or e.get('MIMETYPE') == 'image/jpeg']
-        for idx, fut in enumerate(as_completed(futs)):
+        futs = [pool.submit(image_info, id_, loc, mime, info)
+                for id_, loc, mime, info in mets_info
+                if not jpeg_only or mime == 'image/jpeg']
+        for idx, fut in enumerate(as_completed(futs), start=1):
             yield fut.result(), idx, len(futs)
 
 
@@ -160,13 +165,20 @@ def toc_entries(mets_tree):
     return toc_entries
 
 
-def image_info(felem):
-    """ Parse image information from a filePtr element. """
+def get_image_location(felem):
+    image_id = felem.get('ID')
     mimetype = felem.get('MIMETYPE')
     # Seriously, I loathe XML namespaces...
     location = felem.find(
         "./mets:FLocat[@LOCTYPE='URL']",
         namespaces=NAMESPACES).get('{%s}href' % (NAMESPACES['xlink']))
-    img = Image(blob=requests.get(location).content)
-    return ImageInfo(felem.get('ID'), location, mimetype,
-                     img.width, img.height)
+    return image_id, location, mimetype
+
+
+def image_info(id_, location, mimetype, known_info):
+    """ Parse image information from a filePtr element. """
+    if known_info is None:
+        img = Image(blob=requests.get(location).content)
+    else:
+        img = known_info
+    return ImageInfo(id_, location, mimetype, img.width, img.height)

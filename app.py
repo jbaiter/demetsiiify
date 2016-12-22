@@ -106,10 +106,10 @@ def import_mets_job(self, mets_url):
         iiif_info = iiif.make_info_data(
             image_ident, [(f.width, f.height) for f in files])
         db_iiif_img = IIIFImage(iiif_info, uuid=image_ident)
-        db.session.add(db_iiif_img)
+        IIIFImage.save(db_iiif_img)
         for f in files:
             db_img = Image(f.url, f.width, f.height, f.mimetype, image_ident)
-            db.session.add(db_img)
+            Image.save(db_img)
         iiif_map[phys_id] = (image_ident, label,
                              (largest_image.width, largest_image.height))
         thumbs_map[image_ident] = (smallest_image.width, smallest_image.height)
@@ -118,9 +118,12 @@ def import_mets_job(self, mets_url):
     manifest_id = shortuuid.uuid()
     manifest = iiif.make_manifest(manifest_id, tree, metadata, iiif_map,
                                   toc_entries, thumbs_map)
-    db_manifest = Manifest(mets_url, manifest, uuid=manifest_id)
-    # TODO: Deal with updates, ideally via ON CONFLICT
-    db.session.add(db_manifest)
+    db_manifest = Manifest(mets_url, manifest, uuid=manifest_id,
+                           label=manifest['label'])
+    Manifest.save(db_manifest)
+    # Since the METS might have already been indexed, there's the possibility
+    # that the IIIF images might have changed, leading to orphaned images.
+    IIIFImage.delete_orphaned()
     db.session.commit()
     return manifest['@id']
 
@@ -128,8 +131,10 @@ def import_mets_job(self, mets_url):
 # View endpoints
 @app.route('/view/<path:mets>', methods=['GET'])
 def view_endpoint(mets):
-    manifest = Manifest.query.filter_by(
-        **{'metsurl' if is_url(mets) else 'uuid': mets}).first()
+    if is_url(mets):
+        manifest = Manifest.by_url(mets)
+    else:
+        manifest = Manifest.get(mets)
     if is_url(mets) and manifest is None:
         task = import_mets_job.apply_async((mets,))
         return redirect(url_for('view_status', task_id=task.id,
@@ -192,17 +197,61 @@ def api_remove_task(task_id):
 @app.route('/iiif/<manif_uuid>/manifest')
 @cors('*')
 def get_manifest(manif_uuid):
-    manifest = Manifest.query.get(manif_uuid)
+    manifest = Manifest.get(manif_uuid)
     if manifest is None:
         abort(404)
     else:
         return jsonify(manifest.manifest)
 
 
+@app.route('/iiif/<manif_uuid>/sequence/<sequence_id>.json')
+@app.route('/iiif/<manif_uuid>/sequence/<sequence_id>')
+@cors('*')
+def get_sequence(manif_uuid, sequence_id):
+    sequence = Manifest.get_sequence(manif_uuid, sequence_id)
+    if sequence is None:
+        abort(404)
+    else:
+        return jsonify(sequence)
+
+
+@app.route('/iiif/<manif_uuid>/canvas/<canvas_id>.json')
+@app.route('/iiif/<manif_uuid>/canvas/<canvas_id>')
+@cors('*')
+def get_canvas(manif_uuid, canvas_id):
+    canvas = Manifest.get_canvas(manif_uuid, canvas_id)
+    if canvas is None:
+        abort(404)
+    else:
+        return jsonify(canvas)
+
+
+@app.route('/iiif/<manif_uuid>/annotation/<anno_id>.json')
+@app.route('/iiif/<manif_uuid>/annotation/<anno_id>')
+@cors('*')
+def get_image_annotation(manif_uuid, anno_id):
+    anno = Manifest.get_image_annotation(manif_uuid, anno_id)
+    if anno is None:
+        abort(404)
+    else:
+        return jsonify(anno)
+
+
+@app.route('/iiif/<manif_uuid>/range/<range_id>.json')
+@app.route('/iiif/<manif_uuid>/range/<range_id>')
+@cors('*')
+def get_range(manif_uuid, range_id):
+    range_ = Manifest.get_range(manif_uuid, range_id)
+    if range_ is None:
+        abort(404)
+    else:
+        return jsonify(range_)
+
+
 @app.route('/iiif/image/<image_uuid>/info.json')
 @cors('*')
 def get_image_info(image_uuid):
-    img = IIIFImage.query.get(image_uuid)
+    img = IIIFImage.get(image_uuid)
     if img is None:
         abort(404)
     else:
@@ -218,29 +267,26 @@ def get_image(image_uuid, region, size, rotation, quality, format):
                      or quality not in ('default', 'native'))
     if not_supported:
         abort(501)
-    format = mimetypes.types_map.get('.' + format)
-    if size in ('full', 'max'):
-        image = (
-            Image.query.filter_by(iiif_uuid=image_uuid, format=format)
-                       .order_by(db.desc(Image.width))
-                       .first_or_404())
-    else:
-        parts = [v for v in size.split(',') if v]
-        query = dict(iiif_uuid=image_uuid, format=format)
-        if size.endswith(','):
-            query['width'] = parts[0]
-        elif size.startswith(','):
-            query['height'] = parts[0]
-        else:
-            query.update(width=parts[0], height=parts[1])
-        image = Image.query.filter_by(**query).first()
 
-    if image is None and IIIFImage.query.get(image_uuid) is None:
+    iiif_image = IIIFImage.get(image_uuid)
+    if iiif_image is None:
         abort(404)
-    elif image is None:
+
+    format = mimetypes.types_map.get('.' + format)
+    query = dict(format_=format)
+    if size not in ('full', 'max'):
+        parts = [v for v in size.split(',') if v]
+        if size.endswith(','):
+            query['width'] = int(parts[0])
+        elif size.startswith(','):
+            query['height'] = int(parts[0])
+        else:
+            query['width'], query['height'] = [int(p) for p in parts]
+    url = iiif_image.get_image_url(**query)
+    if url is None:
         abort(501)
     else:
-        return redirect(image.url, 303)
+        return redirect(url, 303)
 
 
 if __name__ == '__main__':

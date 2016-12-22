@@ -86,7 +86,7 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
     for meta in make_metadata(metadata):
         manifest.set_metadata(meta)
     manifest.description = metadata.get('description', "")
-    manifest.see_also = metadata.get('see_also')
+    manifest.seeAlso = metadata.get('see_also')
     manifest.related = metadata.get('related')
     manifest.attribution = metadata.get('attribution')
     manifest.logo = metadata.get('logo')
