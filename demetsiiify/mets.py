@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import requests
 from wand.image import Image
 
-import storage
+from . import models
 
 NAMESPACES = {
     'mets': 'http://www.loc.gov/METS/',
@@ -98,7 +98,7 @@ def get_metadata(mets_tree, mets_url=None):
 
 def get_file_infos(mets_tree, jpeg_only=False):
     _, findall, _ = _make_helpers(mets_tree)
-    mets_info = [(id_, location, mimetype, storage.Image.by_url(location))
+    mets_info = [(id_, location, mimetype, models.Image.by_url(location))
                  for id_, location, mimetype in
                  (get_image_location(e) for e in findall(".//mets:file"))]
     with ThreadPoolExecutor(max_workers=4) as pool:

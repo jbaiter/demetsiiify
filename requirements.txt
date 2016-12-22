@@ -1,5 +1,6 @@
 Flask
 Flask-SQLAlchemy
+Flask-Script
 Celery
 wand
 lxml==3.6.4  # 3.7.0 does not have wheels yet

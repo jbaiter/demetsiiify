@@ -105,7 +105,7 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
         canvas.height = img.height
         thumb_width, thumb_height = thumbs_map[image_id]
         canvas.thumbnail = url_for(
-            'get_image', image_uuid=image_id, region='full',
+            'iiif.get_image', image_uuid=image_id, region='full',
             size="{},{}".format(thumb_width, thumb_height),
             rotation='0', quality='default', format='jpg',
             _external=True)

@@ -6,7 +6,7 @@ services:
       SERVER_NAME:
       PREFERRED_URL_SCHEME:
       SECRET_KEY:
-    command: 'gunicorn -w 4 -b 0.0.0.0:5000 app:app'
+    command: 'gunicorn -w 4 -b 0.0.0.0:5000 manage:app'
   worker:
     environment:
       PRODUCTION: 'true'

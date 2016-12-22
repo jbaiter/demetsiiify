@@ -1,9 +1,7 @@
 import shortuuid
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects import postgresql as pg
 
-
-db = SQLAlchemy()
+from .extensions import db
 
 
 class Manifest(db.Model):
