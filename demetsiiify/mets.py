@@ -1,9 +1,10 @@
 import functools
+import io
 from collections import OrderedDict, namedtuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
-from wand.image import Image
+from PIL import Image
 
 from . import models
 
@@ -21,6 +22,12 @@ ImageInfo = namedtuple('ImageInfo',
                        ('id', 'url', 'mimetype', 'width', 'height'))
 MetsTocEntry = namedtuple('MetsTocEntry', ('children', 'phys_ids', 'log_id',
                                            'label', 'type'))
+
+
+class MetsImportError(Exception):
+    def __init__(self, message, debug_info=None):
+        super().__init__(message)
+        self.debug_info = debug_info
 
 
 def _make_helpers(elem):
@@ -190,17 +197,23 @@ def get_image_location(felem):
 def image_info(id_, location, mimetype, known_info):
     """ Parse image information from a filePtr element. """
     if known_info is None:
-        img = None
-        attempts = 0
-        while img is None:
-            try:
-                img = Image(
-                    blob=requests.get(location, allow_redirects=True).content)
-            except Exception as e:
-                if attempts < 3:
-                    attempts += 1
-                else:
-                    raise e
+        data = None
+        try:
+            data = requests.get(location, allow_redirects=True).content
+        except Exception as e:
+            raise MetsImportError(
+                "Could not get image from {}".format(location),
+                {'location': location,
+                 'mimetytpe': mimetype})
+        try:
+            img = Image.open(io.BytesIO(data))
+        except OSError as exc:
+            raise MetsImportError(
+                "Could not open image from {}, likely the server "
+                "sent corrupt data.".format(location),
+                {'location': location,
+                 'mimetype': mimetype,
+                 'data': data}) from exc
     else:
         img = known_info
     return ImageInfo(id_, location, mimetype, img.width, img.height)

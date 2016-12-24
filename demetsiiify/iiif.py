@@ -119,7 +119,7 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
             'iiif.get_image', image_uuid=image_id, region='full',
             size="{},{}".format(thumb_width, thumb_height),
             rotation='0', quality='default', format='jpg',
-            _external=True)
+            _external=True, _scheme=current_app.config['PREFERRED_URL_SCHEME'])
         phys_to_canvas[phys_id] = canvas.id
     _add_toc_ranges(manifest, toc_entries, phys_to_canvas)
     return manifest.toJSON(top=True)

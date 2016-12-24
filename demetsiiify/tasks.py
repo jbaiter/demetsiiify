@@ -29,6 +29,10 @@ def import_mets_job(mets_url):
                 eta=(sum(times)/len(times)) * (total - idx))
             job.save()
             start_time = time.time()
+        if not file_infos:
+            raise mets.MetsImportError(
+                "METS at {} does not reference any JPEG images"
+                .format(mets_url))
         phys_map = mets.physical_map(tree, file_infos)
         iiif_map = OrderedDict()
         thumbs_map = {}

@@ -12,4 +12,5 @@ requests
 rq
 shortuuid
 sickle
-wand
+Pillow
+ipython  # for debugging on the repl
