@@ -1,12 +1,13 @@
 from flask import current_app
-from flask_script import Shell, Manager, Server, prompt_bool
+from flask_script import Shell, Manager, prompt_bool
 
-from demetsiiify import db, create_app
+from demetsiiify import db, create_app, make_worker, make_redis
 
 
 def _make_context():
     return dict(
         app=current_app,
+        worker=worker,
         drop=drop,
         create=create,
         recreate=recreate)
@@ -14,8 +15,14 @@ def _make_context():
 
 app = create_app()
 manager = Manager(app)
-manager.add_command('runserver', Server(host='0.0.0.0', port=5000))
 manager.add_command('shell', Shell(make_context=lambda: _make_context()))
+
+
+@manager.command
+def worker():
+    redis = make_redis()
+    worker = make_worker(redis)
+    worker.work()
 
 
 @manager.command

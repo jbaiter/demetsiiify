@@ -1,3 +1,4 @@
+import logging
 from itertools import chain
 
 from flask import current_app, url_for
@@ -8,7 +9,8 @@ METAMAP = {
     'title': {'en': 'Title', 'de': 'Titel'},
     'language': {'en': 'Language', 'de': 'Sprache'},
     'genre': {'en': 'Genre', 'de': 'Genre'},
-    'creator': {'en': 'Creator', 'de': 'Urheber'}
+    'creator': {'en': 'Creator', 'de': 'Urheber'},
+    'other_persons': {'en': 'Other Persons', 'de': 'Andere Personen'}
 }
 
 
@@ -21,6 +23,9 @@ LICENSE_MAP = {
     'cc-by-nc': 'http://creativecommons.org/licenses/by-nd/4.0',
     'cc-by-nc-sa': 'http://creativecommons.org/licenses/by-nc-sa/4.0',
     'cc-by-nc-nd': 'http://creativecommons.org/licenses/by-nc-nd/4.0'}
+
+
+logger = logging.getLogger(__name__)
 
 
 def make_info_data(identifier, sizes):
@@ -47,7 +52,13 @@ def make_metadata(mets_meta):
 
 
 def _get_canvases(toc_entry, phys_to_canvas):
-    canvases = [phys_to_canvas[i] for i in toc_entry.phys_ids]
+    canvases = []
+    for phys_id in toc_entry.phys_ids:
+        if phys_id not in phys_to_canvas:
+            logger.warn('Could not find a matching canvas for {}'
+                        .format(phys_id))
+        else:
+            canvases.append(phys_to_canvas[phys_id])
     if toc_entry.children:
         canvases.extend(chain.from_iterable(
             _get_canvases(child, phys_to_canvas)
@@ -57,7 +68,7 @@ def _get_canvases(toc_entry, phys_to_canvas):
 
 def _add_toc_ranges(manifest, toc_entries, phys_to_canvas, idx=0):
     for entry in toc_entries:
-        if entry.label is not None:
+        if entry.label:
             range = manifest.range(ident='r{}'.format(idx), label=entry.label)
             for canvas in _get_canvases(entry, phys_to_canvas):
                 range.add_canvas(canvas)
@@ -85,11 +96,11 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
                                          label=metadata['title'][0])
     for meta in make_metadata(metadata):
         manifest.set_metadata(meta)
-    manifest.description = metadata.get('description', "")
-    manifest.seeAlso = metadata.get('see_also')
-    manifest.related = metadata.get('related')
-    manifest.attribution = metadata.get('attribution')
-    manifest.logo = metadata.get('logo')
+    manifest.description = metadata.get('description', '')
+    manifest.seeAlso = metadata.get('see_also', '')
+    manifest.related = metadata.get('related', '')
+    manifest.attribution = metadata.get('attribution', '')
+    manifest.logo = metadata.get('logo', '')
     manifest.license = LICENSE_MAP.get(metadata.get('license'), '')
 
     phys_to_canvas = {}

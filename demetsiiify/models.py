@@ -138,12 +138,13 @@ class Image(db.Model):
     format = db.Column(db.Text)
     iiif_uuid = db.Column(db.String(22), db.ForeignKey('iiif_image.uuid'))
 
-    def __init__(self, url, width, height, format, iiif_uuid):
+    def __init__(self, url, width, height, format, iiif_uuid=None):
         self.url = url
         self.width = width
         self.height = height
         self.format = format
-        self.iiif_uuid = iiif_uuid
+        if iiif_uuid:
+            self.iiif_uuid = iiif_uuid
 
     @classmethod
     def get(cls, id_):

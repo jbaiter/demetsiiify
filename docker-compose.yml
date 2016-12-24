@@ -27,4 +27,4 @@ services:
     links:
       - postgres
       - redis
-      - worker
+    command: 'gunicorn --reload --worker-class gevent -w 4 -b 0.0.0.0:5000 manage:app'

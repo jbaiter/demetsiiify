@@ -1,13 +1,15 @@
 Flask
 Flask-SQLAlchemy
 Flask-Script
-Celery
-wand
-lxml==3.6.4  # 3.7.0 does not have wheels yet
-iiif-prezi
-psycopg2
-shortuuid
-requests
-redis
-sickle
+flask-sse
+gevent
 gunicorn
+iiif-prezi
+lxml==3.6.4  # 3.7.0 does not have wheels yet
+psycopg2
+redis
+requests
+rq
+shortuuid
+sickle
+wand

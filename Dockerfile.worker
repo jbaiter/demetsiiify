@@ -7,4 +7,4 @@ RUN\
     pip install -U pip wheel &&\
     pip install -r requirements.txt
 
-CMD ["celery", "-A", "demetsiiify.tasks.celery", "worker"]
+CMD ["python", "manage.py", "worker"]

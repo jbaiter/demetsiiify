@@ -1,16 +1,48 @@
 import functools
+import json
 import mimetypes
 from urllib.parse import urlparse
 
-from flask import (Blueprint, abort, current_app, jsonify, make_response,
+from flask import (Blueprint, abort, current_app, g, jsonify, make_response,
                    redirect, render_template, request, url_for)
 
+from . import make_queues, make_redis
 from .models import Manifest, IIIFImage
+from .tasks import import_mets_job
 
 
 view = Blueprint('view', __name__)
 api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
+
+
+def _get_redis():
+    if not hasattr(g, 'redis'):
+        g.redis = make_redis()
+    return g.redis
+
+
+queue, failed_queue = make_queues(_get_redis())
+
+
+class ServerSentEvent(object):
+    def __init__(self, data):
+        if not isinstance(data, str):
+            data = json.dumps(data)
+        self.data = data
+        self.event = None
+        self.id = None
+        self.desc_map = {
+            self.data: "data",
+            self.event: "event",
+            self.id: "id"}
+
+    def encode(self):
+        if not self.data:
+            return ""
+        lines = ["%s: %s" % (v, k)
+                 for k, v in self.desc_map.items() if k]
+        return "%s\n\n" % "\n".join(lines)
 
 
 def is_url(value):
@@ -31,72 +63,82 @@ def cors(origin='*'):
 
 
 # View endpoints
-@view.route('/view/<path:mets>', methods=['GET'])
-def view_endpoint(mets):
-    if is_url(mets):
-        manifest = Manifest.by_url(mets)
-    else:
-        manifest = Manifest.get(mets)
-    if is_url(mets) and manifest is None:
-        from .tasks import import_mets_job
-        task = import_mets_job.apply_async((mets,))
-        return redirect(url_for('view.view_status', task_id=task.id,
-                                _external=True), code=202)
-    elif manifest:
-        return render_template('viewer', manifest_id=manifest['@id'])
-    else:
+@view.route('/view/<manifest_id>', methods=['GET'])
+def view_endpoint(manifest_id):
+    manifest = Manifest.get(manifest_id)
+    if manifest is None:
         abort(404)
+    else:
+        return render_template('view.html',
+                               label=manifest.manifest['label'],
+                               manifest_uri=manifest.manifest['@id'])
 
 
 @view.route('/')
 def index():
-    return jsonify({'scheme': current_app.config['PREFERRED_URL_SCHEME'],
-                    'server_name': current_app.config['SERVER_NAME']})
-
-
-@view.route('/status/<task_id>')
-def view_status(task_id):
-    return render_template('status', task_id=task_id)
+    return render_template('index.html')
 
 
 # API Endpoints
 @api.route('/api/import', methods=['POST'])
 def api_import():
-    from .tasks import import_mets_job
     mets_url = request.json.get('url')
-    task = import_mets_job.apply_async((mets_url,))
-    status_url = url_for('api.api_task_status', task_id=task.id,
+    job = queue.enqueue(import_mets_job, mets_url)
+    status_url = url_for('api.api_task_status', task_id=job.id,
                          _external=True)
-    response = jsonify({'status': status_url})
+    response = jsonify({
+        'task_id': job.id,
+        'status_url': status_url,
+        'sse_channel': url_for('api.sse_stream', task_id=job.id,
+                               _external=True)})
     response.status_code = 202
     response.headers['Location'] = status_url
     return response
 
 
+def _get_job_status(job_id):
+    job = queue.fetch_job(job_id)
+    if job is None:
+        job = failed_queue.fetch_job(job_id)
+    if job is None:
+        return None
+    status = job.get_status()
+    if status == 'failed':
+        exc = job.result
+        info = {'message': str(exc),
+                'type': type(exc).__name__}
+    else:
+        info = job.meta
+    job_ids = queue.get_job_ids()
+    return {'id': job_id,
+            'status': status,
+            'info': info,
+            'position': job_ids.index(job_id) if job_id in job_ids else None,
+            'result': job.result if status == 'finished' else None}
+
+
 @api.route('/api/tasks/<task_id>', methods=['GET'])
 def api_task_status(task_id):
-    from .tasks import import_mets_job
-    task = import_mets_job.AsyncResult(task_id)
-    if task is None:
-        abort(404)
-    if isinstance(task.info, Exception):
-        info = {'message': str(task.info),
-                'type': type(task.info).__name__}
+    status = _get_job_status(task_id)
+    if status:
+        return jsonify(status)
     else:
-        info = task.info
-    return jsonify(
-        {'status': task.state,
-         'info': info,
-         'result': task.get() if task.state == 'SUCCESS' else None})
-
-
-@api.route('/api/tasks/<task_id>', methods=['DELETE'])
-def api_remove_task(task_id):
-    from .tasks import import_mets_job
-    task = import_mets_job.AsyncResult(task_id)
-    if task is None:
         abort(404)
-    task.revoke(request.args.get('terminate') is not None)
+
+
+@api.route('/api/tasks/<task_id>/stream')
+def sse_stream(task_id):
+    redis = _get_redis()
+
+    def gen(redis):
+        channel_name = '__keyspace@0__:rq:job:{}'.format(task_id)
+        pubsub = redis.pubsub()
+        pubsub.subscribe(channel_name)
+        for msg in pubsub.listen():
+            status = _get_job_status(task_id)
+            ev = ServerSentEvent(status)
+            yield ev.encode()
+    return current_app.response_class(gen(redis), mimetype="text/event-stream")
 
 
 # IIIF Endpoints

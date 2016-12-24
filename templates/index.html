@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}demetsiiify{% endblock %}
+
+{% block content %}
+<div class="import-container">
+  <div class='mets-importer'>
+    <div class="pure-form mets-input">
+      <fieldset>
+        <input type="text" type="url" class="form-control" placeholder="Put a METS URL in here!">
+        <button class="pure-button-primary pure-button" type="button">IIIF it!</button>
+      </fieldset>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}
+{{ super() }}
+<script src="https://cdn.rawgit.com/kimmobrunfeldt/progressbar.js/master/dist/progressbar.min.js"></script>
+<script src="{{ url_for('static', filename='js/import.js') }}"></script>
+{% endblock %}

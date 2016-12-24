@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    {%  block head %}
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Convert METS to IIIF">
+    <title>{%block title %}demetsiiify{% endblock %}</title>
+
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" type="image/png">
+    <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.1/build/pure-min.css">
+    <!--[if lte IE 8]>
+        <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.1/build/grids-responsive-old-ie-min.css">
+    <![endif]-->
+    <!--[if gt IE 8]><!-->
+        <link rel="stylesheet" href="https://unpkg.com/purecss@0.6.1/build/grids-responsive-min.css">
+    <!--<![endif]-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% endblock %}
+  </head>
+
+
+  <body>
+    <div class="header">
+        <div class="home-menu pure-menu pure-menu-horizontal pure-menu-fixed">
+            <a class="pure-menu-heading" href="/">demetsiiify</a>
+
+            <ul class="pure-menu-list">
+                <li class="pure-menu-item pure-menu-selected"><a href="/" class="pure-menu-link">Home</a></li>
+                <li class="pure-menu-item"><a href="/doc/api" class="pure-menu-link">API</a></li>
+                <li class="pure-menu-item"><a href="/doc/about" class="pure-menu-link">About</a></li>
+            </ul>
+        </div>
+    </div>
+
+    {% block content %}
+    {% endblock %}
+
+    {% block footer %}
+    <div class="footer l-box">
+      Created by <a href="https://github.com/jbaiter">Johannes Baiter</a>
+    </div>
+    {% endblock %}
+  </body>
+</html>

@@ -13,6 +13,9 @@ NAMESPACES = {
     'dv': 'http://dfg-viewer.de/',
     'xlink': 'http://www.w3.org/1999/xlink'}
 
+# For some reason, some libraries use the wrong MIME type...
+JPEG_MIMES = ('image/jpeg', 'image/jpg')
+
 
 ImageInfo = namedtuple('ImageInfo',
                        ('id', 'url', 'mimetype', 'width', 'height'))
@@ -33,16 +36,33 @@ def parse_title(title_elem):
     nonsort = findtext(".//mods:nonSort")
     if nonsort:
         title = nonsort + title
-    subtitle = xpath(".//mods:subTitle")
+    subtitle = findtext(".//mods:subTitle")
     if subtitle:
         title = "{title}. {subtitle}".format(title=title, subtitle=subtitle)
     return title
 
 
+def parse_name(name_elem):
+    xpath, findall, findtext = _make_helpers(name_elem)
+    name = findtext("./mods:displayForm")
+    if not name:
+        name = " ".join(findtext("./mods:namePart"))
+    return name
+
+
 def get_metadata(mets_tree, mets_url=None):
     # Utility functions to reduce verbosity (I hate XML namespaces...)
     xpath, findall, findtext = _make_helpers(mets_tree)
-    metadata = {}
+    metadata = OrderedDict()
+
+    metadata['creator'] = [
+        parse_name(e)
+        for e in xpath(".//mets:dmdSec[1]//"
+                       "mods:name[./mods:role/mods:roleTerm/text() = 'aut']")]
+    metadata['other_persons'] = [
+        parse_name(e)
+        for e in xpath(".//mets:dmdSec[1]//"
+                       "mods:name[./mods:role/mods:roleTerm/text() != 'aut']")]
 
     titles = [parse_title(e)
               for e in findall(".//mets:dmdSec[1]//mods:mods/mods:titleInfo")]
@@ -51,7 +71,6 @@ def get_metadata(mets_tree, mets_url=None):
         # multi-volume work
         titles = [parse_title(
             findall(".//mods:relatedItem[@type='host']/mods:titleInfo")[0])]
-
     part_number = findtext(".//mods:part/mods:detail/mods:number")
     if part_number:
         titles = [
@@ -62,8 +81,8 @@ def get_metadata(mets_tree, mets_url=None):
     for id_elem in findall(".//mods:identifier"):
         metadata['Identifier ({})'.format(id_elem.get('type'))] = id_elem.text
     metadata['attribution'] = "<a href='{}'>{}</a>".format(
-            findtext(".//mets:rightsMD//dv:owner"),
-            findtext(".//mets:rightsMD//dv:ownerSiteURL"))
+            findtext(".//mets:rightsMD//dv:ownerSiteURL"),
+            findtext(".//mets:rightsMD//dv:owner"))
     metadata['logo'] = findtext(".//mets:rightsMD//dv:ownerLogo")
     metadata['see_also'] = []
     if mets_url:
@@ -77,34 +96,27 @@ def get_metadata(mets_tree, mets_url=None):
         metadata['see_also'].append(
             {'@id': pdf_url, 'format': 'application/pdf'})
     metadata['related'] = findtext(".//mets:digiprovMD//dv:presentation")
-    # metadata['related'].extend([
-    #    {'label': e.get('linktext'), '@id': e.text}
-    #    if e.get('linktext')
-    #    else e.text
-    #    for e in findall(".//dv:links/dv:reference")])
     metadata['license'] = findtext(".//dv:rights/dv:license") or 'reserved'
-    metadata['creator'] = xpath(
-        ".//mets:dmdSec[1]//"
-        "mods:name[./mods:role/mods:roleTerm/text() = 'aut']/"
-        "mods:namePart/text()")
+
     # TODO: mods:originInfo
     # TODO: mods:physicalDescription
     metadata['language'] = findtext(".//mods:languageTerm[@type='text']")
     metadata['genre'] = findtext(".//mods:genre")
     metadata['description'] = findtext(".//mods:abstract")
     # TODO: Add mods:notes to description
-    return {k: v for k, v in metadata.items() if v}
+    return OrderedDict((k, v) for k, v in metadata.items() if v)
 
 
 def get_file_infos(mets_tree, jpeg_only=False):
     _, findall, _ = _make_helpers(mets_tree)
     mets_info = [(id_, location, mimetype, models.Image.by_url(location))
                  for id_, location, mimetype in
-                 (get_image_location(e) for e in findall(".//mets:file"))]
+                 (get_image_location(e) for e in findall(".//mets:file"))
+                 if location.startswith('http')]
     with ThreadPoolExecutor(max_workers=4) as pool:
         futs = [pool.submit(image_info, id_, loc, mime, info)
                 for id_, loc, mime, info in mets_info
-                if not jpeg_only or mime == 'image/jpeg']
+                if not jpeg_only or mime in JPEG_MIMES]
         for idx, fut in enumerate(as_completed(futs), start=1):
             yield fut.result(), idx, len(futs)
 
@@ -178,7 +190,17 @@ def get_image_location(felem):
 def image_info(id_, location, mimetype, known_info):
     """ Parse image information from a filePtr element. """
     if known_info is None:
-        img = Image(blob=requests.get(location).content)
+        img = None
+        attempts = 0
+        while img is None:
+            try:
+                img = Image(
+                    blob=requests.get(location, allow_redirects=True).content)
+            except Exception as e:
+                if attempts < 3:
+                    attempts += 1
+                else:
+                    raise e
     else:
         img = known_info
     return ImageInfo(id_, location, mimetype, img.width, img.height)

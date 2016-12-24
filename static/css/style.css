@@ -1,0 +1,162 @@
+html, body {
+  width: 100%;
+  max-width: 1200px;
+  text-align: center;
+  height: 100%;
+  margin: 0 auto;
+}
+
+body {
+  line-height: 1.7em;
+  font-size: 13px;
+}
+
+h1, h2, h3, h4, h5, h6, label {
+    color: #34495e;
+}
+
+.l-box {
+    padding: 1em;
+}
+
+.l-box-lrg {
+    padding: 2em;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.is-center {
+    text-align: center;
+}
+
+.pure-form label {
+    margin: 1em 0 0;
+    font-weight: bold;
+    font-size: 100%;
+}
+
+.pure-form input[type] {
+    color: black;
+    border: 2px solid #ddd;
+    box-shadow: none;
+    font-size: 100%;
+}
+
+.pure-button-primary {
+    background: #00bc99;
+    color: white;
+    border-radius: 5px;
+    font-size: 120%;
+}
+
+.home-menu {
+    padding: 0.5em;
+    text-align: center;
+    box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
+}
+
+.pure-menu.pure-menu-fixed {
+    border-bottom: 1 px solid black;
+}
+
+.home-menu .pure-menu-heading {
+    color: black;
+    font-weight: 200;
+    font-size: 120%;
+    text-transform: none;
+}
+
+.home-menu .pure-menu-selected a {
+    color: black;
+}
+
+.home-menu a {
+    color: #6FBEF3;
+}
+.home-menu li a:hover,
+.home-menu li a:focus {
+    background: none;
+    border: none;
+    color: #AECFE5;
+}
+
+.import-container {
+  height: 100%;
+}
+
+.mets-importer {
+  width: 100%;
+  height: 45%;
+  margin-top: 4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mets-input {
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
+    border: 3px solid white;
+    padding: 1em 1.6em;
+    font-weight: 100;
+    border-radius: 5px;
+    line-height: 1em;
+    text-align: center;
+    width: 100%;
+}
+
+.mets-input input {
+  width: 75%;
+  height: 3em;
+}
+
+.mets-input button {
+  height: 2.5em;
+  background: none;
+  border: 1px solid black;
+  color: black;
+}
+
+.mets-inputt button[disabled] {
+  border: 1px solid lightgray;
+}
+
+.footer {
+  text-align: right;
+}
+
+@media (max-width: 32em) {
+  .mets-input input {
+    width: 100%;
+  }
+}
+
+@media (min-width: 48em) {
+  body {
+    font-size: 16px;
+  }
+
+  .content {
+    padding: 1em;
+  }
+  .home-menu {
+    text-align: left;
+  }
+  .home-menu ul {
+    float: right;
+  }
+}
+
+#viewer {
+  width: 100%;
+  height: calc(100% - 4em);
+  margin-top: 4em;
+  position: relative;
+  line-height: initial;
+  text-align: initial;
+}
+
+#viewer:fullscreen {
+  height: 100%;
+  margin-top: 0;
+}
