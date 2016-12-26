@@ -126,6 +126,13 @@ def _get_job_status(job_id):
     return out
 
 
+@api.route('/api/tasks', methods=['GET'])
+def api_list_tasks():
+    return jsonify(
+        {'tasks': [_get_job_status(job_id) for job_id in queue.job_ids]})
+
+
+
 @api.route('/api/tasks/<task_id>', methods=['GET'])
 def api_task_status(task_id):
     status = _get_job_status(task_id)
