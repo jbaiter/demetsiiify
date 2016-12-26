@@ -71,8 +71,9 @@ class Manifest(db.Model):
             SELECT seqs
             FROM manifest m,
                  jsonb_array_elements(m.manifest->'sequences') seqs
-            WHERE seqs->>'@id' LIKE '%' || :sequence_id || '.json';
-        """, dict(sequence_id=sequence_id)).first()
+            WHERE m.id = :manifest_id
+                  AND seqs->>'@id' LIKE '%' || :sequence_id || '.json';
+        """, dict(manifest_id=manifest_id, sequence_id=sequence_id)).first()
         return row[0] if row else None
 
     @classmethod
@@ -82,8 +83,9 @@ class Manifest(db.Model):
             FROM manifest m,
                  jsonb_array_elements(m.manifest->'sequences') seqs,
                  jsonb_array_elements(seqs->'canvases') canvases
-            WHERE canvases->>'@id' LIKE '%' || :canvas_id || '.json';
-        """, dict(canvas_id=canvas_id)).first()
+            WHERE m.id = :manifest_id
+                  AND canvases->>'@id' LIKE '%' || :canvas_id || '.json';
+        """, dict(manifest_id=manifest_id, canvas_id=canvas_id)).first()
         return row[0] if row else None
 
     @classmethod
@@ -94,8 +96,9 @@ class Manifest(db.Model):
                  jsonb_array_elements(m.manifest->'sequences') seqs,
                  jsonb_array_elements(seqs->'canvases') canvases,
                  jsonb_array_elements(canvases->'images') images
-            WHERE images->>'@id' LIKE '%' || :anno_id || '.json';
-        """, dict(anno_id=anno_id)).first()
+            WHERE m.id = :manifest_id
+                  AND images->>'@id' LIKE '%' || :anno_id || '.json';
+        """, dict(manifest_id=manifest_id, anno_id=anno_id)).first()
         return row[0] if row else None
 
     @classmethod
