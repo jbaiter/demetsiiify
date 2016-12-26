@@ -4,6 +4,8 @@ from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 
 import lxml.etree as etree
 import requests
+import shortuuid
+from flask import current_app
 from PIL import Image
 from requests.packages.urllib3 import Retry
 
@@ -159,7 +161,7 @@ class MetsDocument:
         self.metadata['see_also'] = []
         if self.url:
             self.metadata['see_also'].append(
-                [{'@id': mets_url, 'format': 'text/xml',
+                [{'@id': self.url, 'format': 'text/xml',
                   'profile': 'http://www.loc.gov/METS/'}])
         pdf_url = self._xpath(
             ".//mets:fileGrp[@USE='DOWNLOAD']/"
@@ -181,6 +183,10 @@ class MetsDocument:
         # TODO: Add mods:notes to description
 
     def read_files(self, jpeg_only=False, yield_progress=True):
+        about_url = "{}://{}/about".format(
+            current_app.config['PREFERRED_URL_SCHEME'],
+            current_app.config['SERVER_NAME'])
+        # FIXME: This is still way too messy!
         self.files = OrderedDict()
         mets_info = [
             (id_, location, mimetype)
@@ -192,8 +198,9 @@ class MetsDocument:
             for id_, loc, mime, in mets_info:
                 db_info = models.Image.by_url(loc)
                 if db_info is None:
-                    futs.append(pool.submit(image_info, id_, loc, mime,
-                                            jpeg_only=True))
+                    futs.append(pool.submit(
+                        image_info, id_, loc, mime, jpeg_only=True,
+                        about_url=about_url))
                 else:
                     fut = Future()
                     fut.set_result(ImageInfo(id_, loc, mime, db_info.width,
@@ -279,16 +286,20 @@ class MetsDocument:
         return image_id, location, mimetype
 
 
-def image_info(id_, location, mimetype, jpeg_only=False):
+def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
     """ Download image to retrieve dimensions and create an ImageInfo object
         with the complete information on the image. """
     ses = requests.Session()
+    if about_url:
+        ses.headers = {'User-Agent': 'demetsiiify <{}>'.format(about_url)}
     adapter = requests.adapters.HTTPAdapter(
         max_retries=Retry(backoff_factor=1))
     ses.mount('http://', adapter)
     ses.mount('https://', adapter)
     resp = None
     try:
+        # We open it streaming, since we don't neccessarily have to read
+        # the complete response (e.g. if the MIME type is unsuitable)
         resp = ses.get(location, allow_redirects=True, stream=True)
     except Exception as e:
         raise MetsImportError(
