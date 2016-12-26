@@ -7,9 +7,8 @@ from flask import (Blueprint, abort, current_app, g, jsonify, make_response,
                    redirect, render_template, request, url_for)
 
 from . import make_queues, make_redis
-from .models import Manifest, IIIFImage
+from .models import Identifier, Manifest, IIIFImage
 from .tasks import import_mets_job
-from .mets import MetsImportError
 
 
 view = Blueprint('view', __name__)
@@ -64,7 +63,7 @@ def cors(origin='*'):
 
 
 # View endpoints
-@view.route('/view/<manifest_id>', methods=['GET'])
+@view.route('/view/<path:manifest_id>', methods=['GET'])
 def view_endpoint(manifest_id):
     manifest = Manifest.get(manifest_id)
     if manifest is None:
@@ -81,6 +80,15 @@ def index():
 
 
 # API Endpoints
+@api.route('/api/resolve/<identifier>')
+def api_resolve(identifier):
+    manifest_id = Identifier.resolve(identifier)
+    if manifest_id is None:
+        abort(404)
+    else:
+        return redirect(url_for('iiif.get_manifest', manif_id=manifest_id))
+
+
 @api.route('/api/import', methods=['POST'])
 def api_import():
     mets_url = request.json.get('url')
@@ -135,73 +143,76 @@ def sse_stream(task_id):
         channel_name = '__keyspace@0__:rq:job:{}'.format(task_id)
         pubsub = redis.pubsub()
         pubsub.subscribe(channel_name)
+        last_evt = None
         for msg in pubsub.listen():
             status = _get_job_status(task_id)
-            ev = ServerSentEvent(status)
-            yield ev.encode()
+            evt = ServerSentEvent(status).encode()
+            if evt != last_evt:
+                yield evt
+            last_evt = evt
     return current_app.response_class(gen(redis), mimetype="text/event-stream")
 
 
 # IIIF Endpoints
-@iiif.route('/iiif/<manif_uuid>/manifest.json')
-@iiif.route('/iiif/<manif_uuid>/manifest')
+@iiif.route('/iiif/<path:manif_id>/manifest.json')
+@iiif.route('/iiif/<path:manif_id>/manifest')
 @cors('*')
-def get_manifest(manif_uuid):
-    manifest = Manifest.get(manif_uuid)
+def get_manifest(manif_id):
+    manifest = Manifest.get(manif_id)
     if manifest is None:
         abort(404)
     else:
         return jsonify(manifest.manifest)
 
 
-@iiif.route('/iiif/<manif_uuid>/sequence/<sequence_id>.json')
-@iiif.route('/iiif/<manif_uuid>/sequence/<sequence_id>')
+@iiif.route('/iiif/<path:manif_id>/sequence/<sequence_id>.json')
+@iiif.route('/iiif/<path:manif_id>/sequence/<sequence_id>')
 @cors('*')
-def get_sequence(manif_uuid, sequence_id):
-    sequence = Manifest.get_sequence(manif_uuid, sequence_id)
+def get_sequence(manif_id, sequence_id):
+    sequence = Manifest.get_sequence(manif_id, sequence_id)
     if sequence is None:
         abort(404)
     else:
         return jsonify(sequence)
 
 
-@iiif.route('/iiif/<manif_uuid>/canvas/<canvas_id>.json')
-@iiif.route('/iiif/<manif_uuid>/canvas/<canvas_id>')
+@iiif.route('/iiif/<path:manif_id>/canvas/<canvas_id>.json')
+@iiif.route('/iiif/<path:manif_id>/canvas/<canvas_id>')
 @cors('*')
-def get_canvas(manif_uuid, canvas_id):
-    canvas = Manifest.get_canvas(manif_uuid, canvas_id)
+def get_canvas(manif_id, canvas_id):
+    canvas = Manifest.get_canvas(manif_id, canvas_id)
     if canvas is None:
         abort(404)
     else:
         return jsonify(canvas)
 
 
-@iiif.route('/iiif/<manif_uuid>/annotation/<anno_id>.json')
-@iiif.route('/iiif/<manif_uuid>/annotation/<anno_id>')
+@iiif.route('/iiif/<path:manif_id>/annotation/<anno_id>.json')
+@iiif.route('/iiif/<path:manif_id>/annotation/<anno_id>')
 @cors('*')
-def get_image_annotation(manif_uuid, anno_id):
-    anno = Manifest.get_image_annotation(manif_uuid, anno_id)
+def get_image_annotation(manif_id, anno_id):
+    anno = Manifest.get_image_annotation(manif_id, anno_id)
     if anno is None:
         abort(404)
     else:
         return jsonify(anno)
 
 
-@iiif.route('/iiif/<manif_uuid>/range/<range_id>.json')
-@iiif.route('/iiif/<manif_uuid>/range/<range_id>')
+@iiif.route('/iiif/<path:manif_id>/range/<range_id>.json')
+@iiif.route('/iiif/<path:manif_id>/range/<range_id>')
 @cors('*')
-def get_range(manif_uuid, range_id):
-    range_ = Manifest.get_range(manif_uuid, range_id)
+def get_range(manif_id, range_id):
+    range_ = Manifest.get_range(manif_id, range_id)
     if range_ is None:
         abort(404)
     else:
         return jsonify(range_)
 
 
-@iiif.route('/iiif/image/<image_uuid>/info.json')
+@iiif.route('/iiif/image/<image_id>/info.json')
 @cors('*')
-def get_image_info(image_uuid):
-    img = IIIFImage.get(image_uuid)
+def get_image_info(image_id):
+    img = IIIFImage.get(image_id)
     if img is None:
         abort(404)
     else:
@@ -209,16 +220,16 @@ def get_image_info(image_uuid):
 
 
 @iiif.route(
-    '/iiif/image/<image_uuid>/<region>/<size>/<rotation>/<quality>.<format>')
+    '/iiif/image/<image_id>/<region>/<size>/<rotation>/<quality>.<format>')
 @cors('*')
-def get_image(image_uuid, region, size, rotation, quality, format):
+def get_image(image_id, region, size, rotation, quality, format):
     not_supported = (region != 'full'
                      or rotation != '0'
                      or quality not in ('default', 'native'))
     if not_supported:
         abort(501)
 
-    iiif_image = IIIFImage.get(image_uuid)
+    iiif_image = IIIFImage.get(image_id)
     if iiif_image is None:
         abort(404)
 

@@ -4,35 +4,66 @@ from sqlalchemy.dialects import postgresql as pg
 from .extensions import db
 
 
+class Identifier(db.Model):
+    surrogate_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, unique=True)
+    type = db.Column(db.String)
+    manifest_id = db.Column(db.String, db.ForeignKey('manifest.id'),
+                            nullable=False)
+
+    def __init__(self, id, type_, manifest_id):
+        self.id = id
+        self.type = type_
+        self.manifest_id = manifest_id
+
+    @classmethod
+    def save(cls, *identifiers):
+        base_query = pg.insert(cls).returning(Identifier.id)
+        return db.session.execute(
+            base_query.on_conflict_do_nothing(
+                index_elements=[Identifier.id]),
+            [dict(id=i.id, type=i.type, manifest_id=i.manifest_id)
+             for i in identifiers])
+
+    @classmethod
+    def resolve(cls, identifier):
+        result = cls.query.filter_by(id=identifier).first()
+        if result:
+            return result.manifest_id
+
+
 class Manifest(db.Model):
-    uuid = db.Column(db.String(22), primary_key=True)
-    metsurl = db.Column(db.String, unique=True)
+    surrogate_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, unique=True)
+    identifiers = db.relationship('Identifier', backref='manifest',
+                                  lazy='dynamic')
+    origin = db.Column(db.String, unique=True)
     manifest = db.Column(pg.JSONB)
     label = db.Column(db.String)
 
-    def __init__(self, metsurl, manifest, label=None, uuid=None):
-        self.uuid = uuid or shortuuid.uuid()
-        self.metsurl = metsurl
+    def __init__(self, origin, manifest, label=None, id=None):
+        self.id = id or shortuuid.uuid()
+        self.origin = origin
         self.manifest = manifest
         self.label = label
 
     @classmethod
     def save(cls, *manifests):
-        base_query = pg.insert(cls).returning(Manifest.uuid)
+        base_query = pg.insert(cls).returning(Manifest.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
-                index_elements=[Manifest.metsurl],
+                index_elements=[Manifest.origin],
                 set_=dict(manifest=base_query.excluded.manifest)),
-            [dict(uuid=m.uuid, metsurl=m.metsurl,
+            [dict(id=m.id, origin=m.origin,
                   manifest=m.manifest) for m in manifests])
 
     @classmethod
-    def get(cls, uuid):
-        return cls.query.get(uuid)
+    def get(cls, id):
+        return cls.query.filter_by(id=id).first()
 
     @classmethod
-    def by_metsurl(cls, metsurl):
-        return cls.query.filter_by(metsurl=metsurl).first()
+    def by_origin(cls, origin):
+        return cls.query.filter_by(origin=origin).first()
 
     @classmethod
     def get_sequence(cls, manifest_id, sequence_id):
@@ -73,18 +104,20 @@ class Manifest(db.Model):
             SELECT ranges
             FROM manifest m,
                  jsonb_array_elements(m.manifest->'structures') structures,
-            WHERE ranges->>'@id' LIKE '%' || :range_id || '.json';
-        """, dict(range_id=range_id)).first()
+            WHERE m.id = :manifest_id
+                  AND ranges->>'@id' LIKE '%' || :range_id || '.json';
+        """, dict(manifest_id=manifest_id, range_id=range_id)).first()
         return row[0] if row else None
 
 
 class IIIFImage(db.Model):
-    uuid = db.Column(db.String(22), primary_key=True)
+    surrogate_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, unique=True)
     info = db.Column(pg.JSONB)
     images = db.relationship('Image', backref='iiif_image', lazy='dynamic')
 
-    def __init__(self, info, uuid=None):
-        self.uuid = uuid or shortuuid.uuid()
+    def __init__(self, info, id=None):
+        self.id = id or shortuuid.uuid()
         self.info = info
 
     def get_image_url(self, format_, width=None, height=None):
@@ -100,17 +133,17 @@ class IIIFImage(db.Model):
         return image.url if image else None
 
     @classmethod
-    def get(cls, uuid):
-        return cls.query.get(uuid)
+    def get(cls, id):
+        return cls.query.filter_by(id=id).first()
 
     @classmethod
     def save(cls, *images):
-        base_query = pg.insert(cls).returning(IIIFImage.uuid)
+        base_query = pg.insert(cls).returning(IIIFImage.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
-                index_elements=[IIIFImage.uuid],
+                index_elements=[IIIFImage.id],
                 set_=dict(info=base_query.excluded.info)),
-            [dict(uuid=i.uuid, info=i.info) for i in images])
+            [dict(id=i.id, info=i.info) for i in images])
 
     @classmethod
     def delete_orphaned(cls):
@@ -125,26 +158,26 @@ class IIIFImage(db.Model):
             DELETE FROM iiif_image
             WHERE (SELECT count(*)
                    FROM image_ids
-                   WHERE id LIKE '%' || uuid) = 0
+                   WHERE id LIKE '%' || id) = 0
             RETURNING info;
             """)
 
 
 class Image(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String, unique=True)
     width = db.Column(db.Integer)
     height = db.Column(db.Integer)
     format = db.Column(db.Text)
-    iiif_uuid = db.Column(db.String(22), db.ForeignKey('iiif_image.uuid'))
+    iiif_id = db.Column(db.String(22), db.ForeignKey('iiif_image.id'))
 
-    def __init__(self, url, width, height, format, iiif_uuid=None):
+    def __init__(self, url, width, height, format, iiif_id=None):
         self.url = url
         self.width = width
         self.height = height
         self.format = format
-        if iiif_uuid:
-            self.iiif_uuid = iiif_uuid
+        if iiif_id:
+            self.iiif_id = iiif_id
 
     @classmethod
     def get(cls, id_):
@@ -163,6 +196,6 @@ class Image(db.Model):
                 set_=dict(width=base_query.excluded.width,
                           height=base_query.excluded.height,
                           format=base_query.excluded.format,
-                          iiif_uuid=base_query.excluded.iiif_uuid)),
+                          iiif_id=base_query.excluded.iiif_id)),
             [dict(url=i.url, width=i.width, height=i.height,
-                  format=i.format, iiif_uuid=i.iiif_uuid) for i in images])
+                  format=i.format, iiif_id=i.iiif_id) for i in images])

@@ -13,12 +13,10 @@
     } else if (status.status === 'failed') {
       // TODO: Replace progress bar with alert that has more information about the error
     } else if (status.status === 'finished') {
-      /* TODO:
-       * - Display Manifest URL in textbox
-       * - Display Drag&Drop Link that leads to viewer
-       */
       var manifestUuid = status.result.split('/').slice(-2)[0];
       window.location.href = '/view/' + manifestUuid;
+    } else if (status.status === 'queued') {
+      // TODO: Display queue position and an animated indiactor that it's queued
     }
   }
 

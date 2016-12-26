@@ -39,11 +39,21 @@ class MetsImportError(Exception):
 class MetsDocument:
     @classmethod
     def from_url(cls, metsurl):
-        return cls(etree.parse(metsurl), metsurl)
+        return cls(etree.parse(metsurl), url=metsurl)
 
-    def __init__(self, mets_tree, url=None):
+    def __init__(self, mets_tree, primary_id=None, url=None):
         self.url = url
         self._tree = mets_tree
+
+        self.identifiers = {
+            e.get('type'): e.text
+            for e in self._findall(".//mods:mods[1]/mods:identifier")}
+        recordid_elem = self._find(
+            ".//mods:mods[1]//mods:recordInfo/mods:recordIdentifier")
+        if recordid_elem is not None:
+            self.identifiers[recordid_elem.get('source')] = recordid_elem.text
+        self.primary_id = primary_id or self._get_unique_identifier()
+
         self.files = None
         self.physical_items = None
         self.toc_entries = None
@@ -95,6 +105,23 @@ class MetsDocument:
                 persons['other_persons'].append(name)
         return persons
 
+    def _get_unique_identifier(self):
+        identifier = None
+        for type_ in ('oai', 'urn'):
+            # Identifiers that are intended to be globally unique
+            if identifier:
+                break
+            identifier = self._findtext(
+                ".//mods:mods[1]/mods:identifier[@type='{}']".format(type_))
+        if not identifier:
+            # MODS recordIdentifier, usually available on ZVDD documents
+            identifier = self._findtext(
+                ".//mods:mods[1]/mods:recordInfo/mods:recordIdentifier")
+        if not identifier:
+            # Random identifier
+            identifier = shortuuid.uuid()
+        return identifier
+
     def _read_titles(self):
         title_elems = self._findall(
             ".//mets:dmdSec[1]//mods:mods/mods:titleInfo")
@@ -114,10 +141,6 @@ class MetsDocument:
     def read_metadata(self, mets_url=None):
         self.metadata.update(self._read_persons())
         self.metadata['title'] = self._read_titles()
-
-        self.metadata['identifiers'] = {}
-        for id_elem in self._findall(".//mods:identifier"):
-            self.metadata['identifiers'][id_elem.get('type')] = id_elem.text
 
         self.metadata['attribution'] = "<a href='{}'>{}</a>".format(
             self._findtext(".//mets:rightsMD//dv:ownerSiteURL"),

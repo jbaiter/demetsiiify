@@ -8,7 +8,7 @@ from rq import get_current_job
 
 from . import mets
 from . import iiif
-from .models import db, Manifest, IIIFImage, Image
+from .models import db, Manifest, IIIFImage, Image, Identifier
 
 
 def import_mets_job(mets_url):
@@ -16,7 +16,7 @@ def import_mets_job(mets_url):
     try:
         xml = requests.get(mets_url, allow_redirects=True).content
         tree = ET.fromstring(xml)
-        doc = mets.MetsDocument(tree)
+        doc = mets.MetsDocument(tree, url=mets_url)
 
         times = deque(maxlen=50)
         start_time = time.time()
@@ -45,7 +45,7 @@ def import_mets_job(mets_url):
             smallest_image = min(itm.files, key=lambda f: f.height)
             iiif_info = iiif.make_info_data(
                 image_ident, [(f.width, f.height) for f in itm.files])
-            db_iiif_img = IIIFImage(iiif_info, uuid=image_ident)
+            db_iiif_img = IIIFImage(iiif_info, id=image_ident)
             IIIFImage.save(db_iiif_img)
             for f in itm.files:
                 db_img = Image(f.url, f.width, f.height, f.mimetype,
@@ -56,15 +56,20 @@ def import_mets_job(mets_url):
             thumbs_map[image_ident] = (smallest_image.width,
                                        smallest_image.height)
 
-        existing_manifest = Manifest.by_metsurl(mets_url)
+        existing_manifest = Manifest.by_origin(mets_url)
         if existing_manifest:
-            manifest_id = existing_manifest.uuid
+            manifest_id = existing_manifest.id
         else:
-            manifest_id = shortuuid.uuid()
+            manifest_id = doc.primary_id
         manifest = iiif.make_manifest(manifest_id, doc, iiif_map, thumbs_map)
-        db_manifest = Manifest(mets_url, manifest, uuid=manifest_id,
+        db_manifest = Manifest(mets_url, manifest, id=manifest_id,
                                label=manifest['label'])
+        db_manifest.identifiers = [
+            Identifier(id_, type, db_manifest.id)
+            for type, id_ in doc.identifiers.items()]
         Manifest.save(db_manifest)
+        Identifier.save(*db_manifest.identifiers)
+
         # Since the METS might have already been indexed, there's the
         # possibility that the IIIF images might have changed, leading to
         # orphaned images.
