@@ -55,7 +55,14 @@ def make_queues(redis):
 
 
 def _exception_handler(job, exc_type, exc_value, traceback):
-    job.meta.update({'exception': exc_value})
+    try:
+        typename = ".".join((exc_value.__module__,
+                             exc_value.__class__.__name__))
+    except AttributeError:
+        typename = exc_value.__class__.__name__
+    job.meta = {
+        'type': typename,
+        'message': exc_value.args[0]}
     job.save()
 
 

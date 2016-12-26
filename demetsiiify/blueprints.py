@@ -107,13 +107,7 @@ def _get_job_status(job_id):
     out = {'id': job_id,
            'status': status}
     if status == 'failed':
-        exc = job.meta['exception']
-        out.update({
-            'trace': job.exc_info,
-            'type': ".".join((exc.__module__, exc.__class__.__name__)),
-            'message': job.meta['exception'].args[0]})
-        if isinstance(exc, MetsImportError):
-            out['extra_info'] = exc.debug_info
+        out.update(job.meta)
     elif status == 'queued':
         job_ids = queue.get_job_ids()
         out['position'] = job_ids.index(job_id) if job_id in job_ids else None
