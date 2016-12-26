@@ -29,6 +29,7 @@ def create_app():
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', DEFAULT_SECRET)
     app.config['SQLALCHEMY_DATABASE_URI'] = (
         'postgresql://postgres:postgres@postgres:5432/postgres')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     db.init_app(app)
     app.before_request(_force_preferred_scheme)
     with app.app_context():
@@ -53,7 +54,14 @@ def make_queues(redis):
                 get_failed_queue())
 
 
+def _exception_handler(job, exc_type, exc_value, traceback):
+    job.meta.update({'exception': exc_value})
+    job.save()
+
+
 def make_worker(redis):
     with Connection(redis):
         queues = [Queue('tasks', default_timeout=60*60)]
-        return Worker(queues)
+        worker = Worker(queues)
+        worker.push_exc_handler(_exception_handler)
+        return worker

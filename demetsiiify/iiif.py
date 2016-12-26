@@ -77,8 +77,7 @@ def _add_toc_ranges(manifest, toc_entries, phys_to_canvas, idx=0):
     return idx
 
 
-def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
-                  thumbs_map):
+def make_manifest(ident, mets_doc, physical_map, thumbs_map):
     manifest_factory = ManifestFactory()
 
     manifest_ident = '{}://{}/iiif/{}/manifest'.format(
@@ -93,15 +92,15 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
     manifest_factory.set_iiif_image_info('2.0', 0)
 
     manifest = manifest_factory.manifest(ident=manifest_ident,
-                                         label=metadata['title'][0])
-    for meta in make_metadata(metadata):
+                                         label=mets_doc.metadata['title'][0])
+    for meta in make_metadata(mets_doc.metadata):
         manifest.set_metadata(meta)
-    manifest.description = metadata.get('description', '')
-    manifest.seeAlso = metadata.get('see_also', '')
-    manifest.related = metadata.get('related', '')
-    manifest.attribution = metadata.get('attribution', '')
-    manifest.logo = metadata.get('logo', '')
-    manifest.license = LICENSE_MAP.get(metadata.get('license'), '')
+    manifest.description = mets_doc.metadata.get('description', '')
+    manifest.seeAlso = mets_doc.metadata.get('see_also', '')
+    manifest.related = mets_doc.metadata.get('related', '')
+    manifest.attribution = mets_doc.metadata.get('attribution', '')
+    manifest.logo = mets_doc.metadata.get('logo', '')
+    manifest.license = LICENSE_MAP.get(mets_doc.metadata.get('license'), '')
 
     phys_to_canvas = {}
     seq = manifest.sequence(ident='default')
@@ -121,5 +120,5 @@ def make_manifest(ident, mets_tree, metadata, physical_map, toc_entries,
             rotation='0', quality='default', format='jpg',
             _external=True, _scheme=current_app.config['PREFERRED_URL_SCHEME'])
         phys_to_canvas[phys_id] = canvas.id
-    _add_toc_ranges(manifest, toc_entries, phys_to_canvas)
+    _add_toc_ranges(manifest, mets_doc.toc_entries, phys_to_canvas)
     return manifest.toJSON(top=True)

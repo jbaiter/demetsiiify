@@ -16,51 +16,52 @@ def import_mets_job(mets_url):
     try:
         xml = requests.get(mets_url, allow_redirects=True).content
         tree = ET.fromstring(xml)
-        file_infos = {}
+        doc = mets.MetsDocument(tree)
+
         times = deque(maxlen=50)
         start_time = time.time()
-        for img_info, idx, total in mets.get_file_infos(tree, jpeg_only=True):
+        for idx, total in doc.read_files(jpeg_only=True, yield_progress=True):
             duration = time.time() - start_time
             times.append(duration)
-            file_infos[img_info.id] = img_info
             job.meta = dict(
                 current_image=idx,
                 total_images=total,
                 eta=(sum(times)/len(times)) * (total - idx))
             job.save()
             start_time = time.time()
-        if not file_infos:
+        if not doc.files:
             raise mets.MetsImportError(
                 "METS at {} does not reference any JPEG images"
                 .format(mets_url))
-        phys_map = mets.physical_map(tree, file_infos)
+        doc.read_physical_items()
+        doc.read_toc_entries()
+        doc.read_metadata()
+
         iiif_map = OrderedDict()
         thumbs_map = {}
-        for phys_id, (label, files) in phys_map.items():
+        for phys_id, itm in doc.physical_items.items():
             image_ident = shortuuid.uuid()
-            largest_image = max(files, key=lambda f: f.height)
-            smallest_image = min(files, key=lambda f: f.height)
+            largest_image = max(itm.files, key=lambda f: f.height)
+            smallest_image = min(itm.files, key=lambda f: f.height)
             iiif_info = iiif.make_info_data(
-                image_ident, [(f.width, f.height) for f in files])
+                image_ident, [(f.width, f.height) for f in itm.files])
             db_iiif_img = IIIFImage(iiif_info, uuid=image_ident)
             IIIFImage.save(db_iiif_img)
-            for f in files:
+            for f in itm.files:
                 db_img = Image(f.url, f.width, f.height, f.mimetype,
                                image_ident)
                 Image.save(db_img)
-            iiif_map[phys_id] = (image_ident, label,
+            iiif_map[phys_id] = (image_ident, itm.label,
                                  (largest_image.width, largest_image.height))
             thumbs_map[image_ident] = (smallest_image.width,
                                        smallest_image.height)
-        metadata = mets.get_metadata(tree)
-        toc_entries = mets.toc_entries(tree)
+
         existing_manifest = Manifest.by_metsurl(mets_url)
         if existing_manifest:
             manifest_id = existing_manifest.uuid
         else:
             manifest_id = shortuuid.uuid()
-        manifest = iiif.make_manifest(manifest_id, tree, metadata, iiif_map,
-                                      toc_entries, thumbs_map)
+        manifest = iiif.make_manifest(manifest_id, doc, iiif_map, thumbs_map)
         db_manifest = Manifest(mets_url, manifest, uuid=manifest_id,
                                label=manifest['label'])
         Manifest.save(db_manifest)

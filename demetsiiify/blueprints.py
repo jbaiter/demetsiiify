@@ -9,6 +9,7 @@ from flask import (Blueprint, abort, current_app, g, jsonify, make_response,
 from . import make_queues, make_redis
 from .models import Manifest, IIIFImage
 from .tasks import import_mets_job
+from .mets import MetsImportError
 
 
 view = Blueprint('view', __name__)
@@ -103,18 +104,24 @@ def _get_job_status(job_id):
     if job is None:
         return None
     status = job.get_status()
+    out = {'id': job_id,
+           'status': status}
     if status == 'failed':
-        exc = job.result
-        info = {'message': str(exc),
-                'type': type(exc).__name__}
-    else:
-        info = job.meta
-    job_ids = queue.get_job_ids()
-    return {'id': job_id,
-            'status': status,
-            'info': info,
-            'position': job_ids.index(job_id) if job_id in job_ids else None,
-            'result': job.result if status == 'finished' else None}
+        exc = job.meta['exception']
+        out.update({
+            'trace': job.exc_info,
+            'type': ".".join((exc.__module__, exc.__class__.__name__)),
+            'message': job.meta['exception'].args[0]})
+        if isinstance(exc, MetsImportError):
+            out['extra_info'] = exc.debug_info
+    elif status == 'queued':
+        job_ids = queue.get_job_ids()
+        out['position'] = job_ids.index(job_id) if job_id in job_ids else None
+    elif status == 'started':
+        out.update(job.meta)
+    elif status == 'finished':
+        out['result'] = job.result
+    return out
 
 
 @api.route('/api/tasks/<task_id>', methods=['GET'])

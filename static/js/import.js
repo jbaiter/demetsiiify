@@ -7,8 +7,8 @@
 
   function updateProgress(progressLine, event) {
     var status = JSON.parse(event.data);
-    if (status.status === 'started' && status.info.current_image) {
-      var completion = (status.info.current_image / status.info.total_images);
+    if (status.status === 'started' && status.current_image) {
+      var completion = (status.current_image / status.total_images);
       progressLine.animate(completion);
     } else if (status.status === 'failed') {
       // TODO: Replace progress bar with alert that has more information about the error
