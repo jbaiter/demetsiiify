@@ -172,8 +172,12 @@ class MetsDocument:
                 {'@id': pdf_url, 'format': 'application/pdf'})
         self.metadata['related'] = self._findtext(
             ".//mets:digiprovMD//dv:presentation")
-        self.metadata['license'] = self._findtext(
-            ".//dv:rights/dv:license") or 'reserved'
+        license = self._findtext(".//dv:rights/dv:license")
+        if not license:
+            license = self._findtext(".//mods:accessCondition")
+        if not license:
+            license = 'reserved'
+        self.metadata['license'] = license
 
         # TODO: mods:physicalDescription
         self.metadata['language'] = self._findtext(
