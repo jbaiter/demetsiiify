@@ -105,6 +105,14 @@ class MetsDocument:
                 persons['other_persons'].append(name)
         return persons
 
+    def _read_origin(self):
+        info_elem = self._find(".//mods:mods[1]/mods:originInfo")
+        return {
+            'publisher': self._findtext("./mods:publisher", info_elem),
+            'pub_place': self._findtext("./mods:place/mods:placeTerm",
+                                        info_elem),
+            'pub_date': self._findtext("./mods:dateIssued", info_elem)}
+
     def _get_unique_identifier(self):
         identifier = None
         for type_ in ('oai', 'urn'):
@@ -138,8 +146,9 @@ class MetsDocument:
                 for title in titles]
         return titles
 
-    def read_metadata(self, mets_url=None):
+    def read_metadata(self):
         self.metadata.update(self._read_persons())
+        self.metadata.update(self._read_origin())
         self.metadata['title'] = self._read_titles()
 
         self.metadata['attribution'] = "<a href='{}'>{}</a>".format(

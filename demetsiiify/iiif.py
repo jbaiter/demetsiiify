@@ -10,7 +10,10 @@ METAMAP = {
     'language': {'en': 'Language', 'de': 'Sprache'},
     'genre': {'en': 'Genre', 'de': 'Genre'},
     'creator': {'en': 'Creator', 'de': 'Urheber'},
-    'other_persons': {'en': 'Other Persons', 'de': 'Andere Personen'}
+    'other_persons': {'en': 'Other Persons', 'de': 'Andere Personen'},
+    'publisher': {'en': 'Publisher', 'de': 'Veröffentlicht von'},
+    'pub_place': {'en': 'Publication Place', 'de': 'Publikationsort'},
+    'pub_date': {'en': 'Publication Date', 'de': 'Erscheinungsdatum'}
 }
 
 
