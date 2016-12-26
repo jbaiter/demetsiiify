@@ -110,7 +110,7 @@ def make_manifest(ident, mets_doc, physical_map, thumbs_map):
     for idx, (phys_id, (image_id, label, (width, height))) in enumerate(
             physical_map.items(), start=1):
         page_id = 'p{}'.format(idx)
-        canvas = seq.canvas(ident=page_id, label=label)
+        canvas = seq.canvas(ident=page_id, label=label or '?')
         anno = canvas.annotation(ident=page_id)
         img = anno.image(image_id, iiif=True)
         img.set_hw(height, width)
