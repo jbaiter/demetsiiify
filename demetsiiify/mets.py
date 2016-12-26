@@ -89,13 +89,13 @@ class MetsDocument:
     def _parse_name(self, name_elem):
         name = self._findtext("./mods:displayForm", name_elem)
         if not name:
-            name = " ".join(self._findtext("./mods:namePart", name_elem))
+            name = " ".join(
+                e.text for e in self._findall("./mods:namePart", name_elem))
         return name
 
     def _read_persons(self):
         persons = defaultdict(list)
-        name_elems = self._xpath(
-            ".//mets:dmdSec[1]//mods:name[./mods:role/mods:roleTerm]")
+        name_elems = self._xpath(".//mods:mods[1]/mods:name")
         for e in name_elems:
             name = self._parse_name(e)
             role = self._findtext("./mods:role/mods:roleTerm", e)
@@ -131,8 +131,7 @@ class MetsDocument:
         return identifier
 
     def _read_titles(self):
-        title_elems = self._findall(
-            ".//mets:dmdSec[1]//mods:mods/mods:titleInfo")
+        title_elems = self._findall(".//mods:mods[1]/mods:titleInfo")
         if not title_elems:
             # For items with no title of their own that are part of a larger
             # multi-volume work
@@ -174,7 +173,6 @@ class MetsDocument:
         self.metadata['license'] = self._findtext(
             ".//dv:rights/dv:license") or 'reserved'
 
-        # TODO: mods:originInfo
         # TODO: mods:physicalDescription
         self.metadata['language'] = self._findtext(
             ".//mods:languageTerm[@type='text']")
@@ -233,9 +231,9 @@ class MetsDocument:
             page_id = page_elem.get('ID')
             for label_attr in ('LABEL', 'ORDERLABEL', 'ORDER'):
                 label = page_elem.get(label_attr)
-                if label is not None:
+                if label:
                     break
-            if label is None:
+            if not label:
                 label = '?'
             files = [
                 self.files[ptr.get('FILEID')]
@@ -300,7 +298,7 @@ def image_info(id_, location, mimetype, jpeg_only=False):
     if jpeg_only and resp.headers['Content-Type'] not in JPEG_MIMES:
         return None
     try:
-        # We cannot trust the mimetype from the METS, often it lies about
+        # We cannot trust the mimetype from the METS, sometimes it lies about
         # what's actually on the server
         server_mime = resp.headers['Content-Type']
         # TODO: Log a warning if mimetype and server_mime mismatch
