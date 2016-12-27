@@ -310,12 +310,12 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
             "Could not get image from {}".format(location),
             {'location': location,
              'mimetytpe': mimetype})
-    if jpeg_only and resp.headers['Content-Type'] not in JPEG_MIMES:
+    # We cannot trust the mimetype from the METS, sometimes it lies about
+    # what's actually on the server
+    server_mime = resp.headers['Content-Type'].split(';')[0]
+    if jpeg_only and server_mime not in JPEG_MIMES:
         return None
     try:
-        # We cannot trust the mimetype from the METS, sometimes it lies about
-        # what's actually on the server
-        server_mime = resp.headers['Content-Type']
         # TODO: Log a warning if mimetype and server_mime mismatch
         img = Image.open(io.BytesIO(resp.content))
         return ImageInfo(id_, location, server_mime, img.width, img.height)

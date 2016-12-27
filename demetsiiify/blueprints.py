@@ -162,6 +162,8 @@ def api_task_status(task_id):
 
 @api.route('/api/tasks/<task_id>/stream')
 def sse_stream(task_id):
+    if task_id not in queue.job_ids:
+        abort(404)
     redis = _get_redis()
 
     def gen(redis):

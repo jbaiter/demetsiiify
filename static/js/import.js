@@ -1,33 +1,60 @@
+// ChildNode.remove() polyfill for Internet Explorer
+// from: https://github.com/jserz/js_piece/blob/master/DOM/ChildNode/remove()/remove().md
+(function (arr) {
+  arr.forEach(function (item) {
+    item.remove = item.remove || function () {
+      this.parentNode.removeChild(this);
+    };
+  });
+})([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
+
 (function(){
+  var statusTemplate = (
+    '<div class="import-status">' +
+    '  <div class="progressbar">' +
+    '    <div class="progress"></div>' +
+    '  </div>' +
+    '  <div class="job-status"></div>' +
+    '</div>');
+
   function makeElement(template) {
     var outer = document.createElement('div');
     outer.innerHTML = template;
     return outer.children[0];
   }
 
-  function updateProgress(progressLine, event) {
+  function updateProgress(event) {
     var status = JSON.parse(event.data);
-    if (status.status === 'started' && status.current_image) {
-      var completion = (status.current_image / status.total_images);
-      progressLine.animate(completion);
+    if (status.status === 'started') {
+      document.querySelector('.job-status').textContent = 'Processing';
+      if (status.current_image !== undefined) {
+        var completion = (status.current_image / status.total_images);
+        document.querySelector('.progressbar .progress').style.width = (completion * 100) + "%";
+      }
     } else if (status.status === 'failed') {
       // TODO: Replace progress bar with alert that has more information about the error
     } else if (status.status === 'finished') {
       var manifestUuid = status.result.split('/').slice(-2)[0];
       window.location.href = '/view/' + manifestUuid;
     } else if (status.status === 'queued') {
-      // TODO: Display queue position and an animated indiactor that it's queued
+      document.querySelector('.job-status').textContent = 'Queued';
+      var progressBar = document.querySelector('.progressbar .progress');
+      if (!progressBar.dataset.queueLength) {
+        progressBar.dataset.queueLength = status.position + 1;
+      }
+      var queueLength = progressBar.dataset.queueLength;
+      var completion = (queueLength - status.position + 1) / queueLength;
+      progressBar.style.width = (completion * 100) + "%";
     }
   }
 
   function addProgressMonitor(metsUrl, status) {
-    var progressElement = makeElement('<div class="progress">');
-    document.querySelector('.import-container').appendChild(progressElement);
-    var progressLine = new ProgressBar.Line(progressElement, {
-      'text': 'Queued'
-    });
+    var statusElement = makeElement(statusTemplate);
+    statusElement.querySelector('.job-status').textContent = 'Queued';
+    document.querySelector('.mets-input').remove();
+    document.querySelector('.mets-importer').appendChild(statusElement);
     var eventStream = new EventSource(status.sse_channel);
-    eventStream.onmessage = updateProgress.bind(null, progressLine);
+    eventStream.onmessage = updateProgress;
   }
 
   function addErrorState(status) {
