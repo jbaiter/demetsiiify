@@ -54,8 +54,12 @@ class Manifest(db.Model):
             base_query.on_conflict_do_update(
                 index_elements=[Manifest.origin],
                 set_=dict(manifest=base_query.excluded.manifest)),
-            [dict(id=m.id, origin=m.origin,
+            [dict(id=m.id, origin=m.origin, label=m.label,
                   manifest=m.manifest) for m in manifests])
+
+    @classmethod
+    def get_latest(cls, num=10):
+        return cls.query.limit(num).all()
 
     @classmethod
     def get(cls, id):

@@ -23,11 +23,12 @@ def import_mets_job(mets_url):
         for idx, total in doc.read_files(jpeg_only=True, yield_progress=True):
             duration = time.time() - start_time
             times.append(duration)
-            job.meta = dict(
-                current_image=idx,
-                total_images=total,
-                eta=(sum(times)/len(times)) * (total - idx))
-            job.save()
+            if job:
+                job.meta = dict(
+                    current_image=idx,
+                    total_images=total,
+                    eta=(sum(times)/len(times)) * (total - idx))
+                job.save()
             start_time = time.time()
         if not doc.files:
             raise mets.MetsImportError(

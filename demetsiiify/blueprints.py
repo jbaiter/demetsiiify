@@ -9,6 +9,7 @@ from flask import (Blueprint, abort, current_app, g, jsonify, make_response,
 from . import make_queues, make_redis
 from .models import Identifier, Manifest, IIIFImage
 from .tasks import import_mets_job
+from .iiif import make_manifest_collection
 
 
 view = Blueprint('view', __name__)
@@ -76,10 +77,28 @@ def view_endpoint(manifest_id):
 
 @view.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', latest=_get_latest(10))
+
+
+def _get_latest(num):
+    return list(reversed([
+        {'id': m.id,
+         'manifest': url_for('iiif.get_manifest', manif_id=m.id,
+                             _external=True),
+         'preview': m.manifest['sequences'][0]['canvases'][0]['thumbnail'],
+         'label': m.label,
+         'attribution': m.manifest['attribution'],
+         'attribution_logo': m.manifest['logo']}
+        for m in Manifest.get_latest(num)]))
 
 
 # API Endpoints
+@api.route('/api/latest')
+def api_get_latest():
+    num = int(request.args.get('num', '10'))
+    return jsonify(dict(latest=_get_latest(num)))
+
+
 @api.route('/api/resolve/<identifier>')
 def api_resolve(identifier):
     manifest_id = Identifier.resolve(identifier)
@@ -132,7 +151,6 @@ def api_list_tasks():
         {'tasks': [_get_job_status(job_id) for job_id in queue.job_ids]})
 
 
-
 @api.route('/api/tasks/<task_id>', methods=['GET'])
 def api_task_status(task_id):
     status = _get_job_status(task_id)
@@ -161,6 +179,24 @@ def sse_stream(task_id):
 
 
 # IIIF Endpoints
+@iiif.route('/iiif/collection/<collection_id>/<page_id>')
+@cors('*')
+def get_collection(collection_id, page_id):
+    if collection_id != 'index':
+        abort(404)
+    if page_id == 'top':
+        page_num = None
+    else:
+        page_num = int(page_id[1:])
+    pagination = Manifest.query.paginate(
+        page=page_num,
+        per_page=current_app.config['ITEMS_PER_PAGE'])
+    label = "All manifests available at {}".format(
+        current_app.config['SERVER_NAME'])
+    return jsonify(make_manifest_collection(
+        pagination, label, collection_id, page_num))
+
+
 @iiif.route('/iiif/<path:manif_id>/manifest.json')
 @iiif.route('/iiif/<path:manif_id>/manifest')
 @cors('*')

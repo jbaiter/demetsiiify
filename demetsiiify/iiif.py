@@ -125,3 +125,49 @@ def make_manifest(ident, mets_doc, physical_map, thumbs_map):
         phys_to_canvas[phys_id] = canvas.id
     _add_toc_ranges(manifest, mets_doc.toc_entries, phys_to_canvas)
     return manifest.toJSON(top=True)
+
+
+def make_manifest_collection(pagination, label, collection_id, page_num=None):
+    if page_num is not None:
+        page_id = 'p{}'.format(page_num)
+    else:
+        page_id = 'top'
+    collection = {
+        "@context": "http://iiif.io/api/presentation/2/context.json",
+        "@id": url_for('iiif.get_collection', collection_id=collection_id,
+                       page_id=page_id, _external=True),
+        "@type": "sc:Collection",
+    }
+    if page_id == 'top':
+        collection.update({
+            "label": label,
+            "total": pagination.total,
+            "first": url_for(
+                'iiif.get_collection', collection_id=collection_id,
+                page_id='p1', _external=True),
+            "last": url_for(
+                'iiif.get_collection', collection_id=collection_id,
+                page_id='p{}'.format(pagination.pages), _external=True)
+        })
+    else:
+        collection.update({
+            'within': url_for(
+                'iiif.get_collection', collection_id=collection_id,
+                page_id='top', _external=True),
+            'startIndex': (pagination.page-1) * pagination.per_page,
+            'manifests': [{
+                '@id': url_for('iiif.get_manifest', manif_id=m.id,
+                               _external=True),
+                '@type': 'sc:Manifest',
+                'label': m.label
+            } for m in pagination.items]
+        })
+        if pagination.has_next:
+            collection['next'] = url_for(
+                'iiif.get_collection', collection_id=collection_id,
+                page_id='p{}'.format(pagination.next_num), _external=True)
+        if pagination.has_prev:
+            collection['prev'] = url_for(
+                'iiif.get_collection', collection_id=collection_id,
+                page_id='p{}'.format(pagination.prev_num), _external=True)
+    return collection

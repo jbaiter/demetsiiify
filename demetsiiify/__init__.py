@@ -30,6 +30,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = (
         'postgresql://postgres:postgres@postgres:5432/postgres')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['ITEMS_PER_PAGE'] = 200
     db.init_app(app)
     app.before_request(_force_preferred_scheme)
     with app.app_context():
