@@ -9,17 +9,18 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
     volumes:
       - .:/code
     links:
       - postgres
       - redis
+    command: 'python manage.py worker'
 
   webapp:
     build:
       context: .
-      dockerfile: Dockerfile.web
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
