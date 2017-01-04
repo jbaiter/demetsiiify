@@ -5,6 +5,7 @@ html, body {
   height: calc(100% - 4em);
   margin: 0 auto;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 body {
@@ -104,7 +105,7 @@ h1, h2, h3, h4, h5, h6, label {
     width: 100%;
 }
 
-.mets-input input {
+.mets-input input[type='url'] {
   width: 75%;
   height: 3em;
 }
@@ -175,7 +176,7 @@ h1, h2, h3, h4, h5, h6, label {
     width: 0%;
     max-width: 100%;
     float: left;
-    transition: width 1s;
+    transition: width .5s;
 }
 
 .job-status {
@@ -188,4 +189,55 @@ h1, h2, h3, h4, h5, h6, label {
   vertical-align: middle;
   text-align: center;
   padding: 0.5em 1em;
+}
+
+.notification-form {
+  align-self: flex-start;
+  text-align: left;
+  margin-left: 1em;
+}
+
+.notification-form label {
+  font-weight: normal;
+  font-size: 13px;
+}
+
+.notification-form input[type=email] {
+  height: 1.75em;
+}
+
+.notification-form button {
+  font-size: 13px;
+}
+
+.error-message {
+  display: block;
+  text-align: left;
+  margin-left: 1.5em;
+  margin-top: 0.5em;
+  font-size: 0.75em;
+  color: red;
+}
+
+input.form-control.invalid {
+  border: 2px solid red;
+}
+
+.import-error {
+  background: red;
+  color: white;
+  padding: 1em;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.close:after {
+  display: inline-block;
+  content: "\00d7";
+  cursor: pointer;
 }

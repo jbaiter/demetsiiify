@@ -3,27 +3,19 @@ import json
 import mimetypes
 from urllib.parse import urlparse
 
-from flask import (Blueprint, abort, current_app, g, jsonify, make_response,
+import requests
+from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
+from validate_email import validate_email
 
-from . import make_queues, make_redis
 from .models import Identifier, Manifest, IIIFImage
-from .tasks import import_mets_job
+from .tasks import queue, failed_queue, get_redis, import_mets_job
 from .iiif import make_manifest_collection
 
 
 view = Blueprint('view', __name__)
 api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
-
-
-def _get_redis():
-    if not hasattr(g, 'redis'):
-        g.redis = make_redis()
-    return g.redis
-
-
-queue, failed_queue = make_queues(_get_redis())
 
 
 class ServerSentEvent(object):
@@ -111,33 +103,38 @@ def api_resolve(identifier):
 @api.route('/api/import', methods=['POST'])
 def api_import():
     mets_url = request.json.get('url')
+    resp = None
+    try:
+        resp = requests.head(mets_url)
+    except:
+        pass
+    if not resp:
+        return jsonify({
+            'message': 'There is no METS available at the given URL.'}), 400
     job = queue.enqueue(import_mets_job, mets_url)
     status_url = url_for('api.api_task_status', task_id=job.id,
                          _external=True)
-    response = jsonify({
-        'task_id': job.id,
-        'status_url': status_url,
-        'sse_channel': url_for('api.sse_stream', task_id=job.id,
-                               _external=True)})
+    response = jsonify(_get_job_status(job.id))
     response.status_code = 202
     response.headers['Location'] = status_url
     return response
 
 
-def _get_job_status(job_id):
-    job = queue.fetch_job(job_id)
-    if job is None:
-        job = failed_queue.fetch_job(job_id)
-    if job is None:
-        return None
+def _get_job_status(job):
+    if isinstance(job, str):
+        job = queue.fetch_job(job)
+        if job is None:
+            job = failed_queue.fetch_job(job)
+        if job is None:
+            return None
     status = job.get_status()
-    out = {'id': job_id,
+    out = {'id': job.id,
            'status': status}
     if status == 'failed':
         out.update(job.meta)
     elif status == 'queued':
         job_ids = queue.get_job_ids()
-        out['position'] = job_ids.index(job_id) if job_id in job_ids else None
+        out['position'] = job_ids.index(job.id) if job.id in job_ids else None
     elif status == 'started':
         out.update(job.meta)
     elif status == 'finished':
@@ -162,9 +159,12 @@ def api_task_status(task_id):
 
 @api.route('/api/tasks/<task_id>/stream')
 def sse_stream(task_id):
-    if task_id not in queue.job_ids:
+    redis = get_redis()
+    job = queue.fetch_job(task_id)
+    if job is None:
+        job = failed_queue.fetch_job(task_id)
+    if job is None:
         abort(404)
-    redis = _get_redis()
 
     def gen(redis):
         channel_name = '__keyspace@0__:rq:job:{}'.format(task_id)
@@ -178,6 +178,22 @@ def sse_stream(task_id):
                 yield evt
             last_evt = evt
     return current_app.response_class(gen(redis), mimetype="text/event-stream")
+
+
+@api.route('/api/notify')
+def register_email_notification():
+    recipient = request.json['recipient']
+    job_ids = request.json['job_ids']
+    if validate_email(recipient, verify=True):
+        return jsonify({'error': 'The email passed is not valid!'}), 400
+    redis = get_redis()
+    jobs_key = 'notifications.{}.jobs'.format(recipient)
+    batch = redis.pipeline()
+    batch.sadd(jobs_key, *job_ids)
+    for job_id in job_ids:
+        batch.sadd('recipients.{}'.format(job_id), recipient)
+    batch.execute()
+    return jsonify({'jobs': redis.smembers(jobs_key)})
 
 
 # IIIF Endpoints

@@ -306,6 +306,8 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
         # the complete response (e.g. if the MIME type is unsuitable)
         resp = ses.get(location, allow_redirects=True, stream=True)
     except Exception as e:
+        resp = None
+    if not resp:
         raise MetsImportError(
             "Could not get image from {}".format(location),
             {'location': location,

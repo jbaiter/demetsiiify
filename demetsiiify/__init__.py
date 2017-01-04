@@ -12,6 +12,14 @@ larencontrefortuitesurunetablededissectiond'unemachineàcoudreetd'unparapluie
 """
 
 
+class CustomFlask(Flask):
+    jinja_options = Flask.jinja_options.copy()
+    jinja_options.update(dict(
+        variable_start_string='[[',
+        variable_end_string=']]'
+    ))
+
+
 def _force_preferred_scheme():
     if current_app.config['PREFERRED_URL_SCHEME'] == 'https':
         from flask import _request_ctx_stack
@@ -21,8 +29,8 @@ def _force_preferred_scheme():
 
 
 def create_app():
-    app = Flask(__name__, template_folder='../templates',
-                static_folder='../static')
+    app = CustomFlask(__name__, template_folder='../templates',
+                      static_folder='../static')
     app.config['PREFERRED_URL_SCHEME'] = os.environ.get(
         'PREFERRED_URL_SCHEME', 'http')
     app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'localhost:5000')
@@ -31,6 +39,7 @@ def create_app():
         'postgresql://postgres:postgres@postgres:5432/postgres')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['ITEMS_PER_PAGE'] = 200
+    app.config['DUMP_METS'] = os.environ.get('DUMP_METS')
     db.init_app(app)
     app.before_request(_force_preferred_scheme)
     with app.app_context():
@@ -52,6 +61,7 @@ def make_redis():
 def make_queues(redis):
     with Connection(redis):
         return (Queue('tasks', default_timeout=60*60),
+                Queue('notifications'),
                 get_failed_queue())
 
 
@@ -69,7 +79,8 @@ def _exception_handler(job, exc_type, exc_value, traceback):
 
 def make_worker(redis):
     with Connection(redis):
-        queues = [Queue('tasks', default_timeout=60*60)]
+        queues = [Queue('tasks', default_timeout=60*60),
+                  Queue('notifications')]
         worker = Worker(queues)
         worker.push_exc_handler(_exception_handler)
         return worker
