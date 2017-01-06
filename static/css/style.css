@@ -40,3 +40,19 @@ html, body {
 input.metsurl {
   width: 100% !important;
 }
+
+.button.is-large img {
+  height: 42px;
+}
+
+.button.is-loading img {
+  display: none;
+}
+
+.iiif-btn {
+  min-width: 82px;
+}
+
+.metsurl img {
+  max-height: 1.5em;
+}

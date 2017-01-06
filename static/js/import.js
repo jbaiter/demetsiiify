@@ -35,8 +35,8 @@ Vue.component("JobDisplay", {
             <div class="content">
               <h3>{{ job.label || job.metsurl }}</h3>
               <p v-if="job.label">
-                <a :href="job.metsurl">
-                  {{ job.metsurl }}
+                <a :href="job.metsurl" class="metsurl">
+                  <img src="/static/img/mets.png">
                 </a>
               </p>
               <p v-if="job.attribution" class="attribution">
@@ -57,7 +57,9 @@ Vue.component("JobDisplay", {
             <p v-if="job.status === 'finished'" class="control has-addons">
               <input @click="onMetsUrlClick" :value="job.result" type="url"
                      class="input metsurl" ref="metsurl" readonly>
-              <a :href="viewerUrl" class="button is-info">Open in viewer</a>
+              <a :href="viewerUrl" class="button is-info" target="_blank">
+                Open in viewer
+              </a>
             </div>
           </div>
         </article>
@@ -77,8 +79,10 @@ Vue.component("JobDisplay", {
       }
     },
     viewerUrl: function() {
-      var manifestId = this.job.result.split('/').splice(-2)[0];
-      return `/view/${manifestId}`;
+      if (this.job.result) {
+        var manifestId = this.job.result.split('/').splice(-2)[0];
+        return `/view/${manifestId}`;
+      }
     }
   },
   methods: {
@@ -182,17 +186,18 @@ Vue.component("MetsForm", {
                         @dismiss-notification="onDismissNotification"/>
       <form @submit.prevent>
         <div class="columns">
-          <p class="column is-11">
+          <p class="column is-11 control">
             <input v-model="metsUrl" type="url" class="input is-large"
-                  @click="removeError" name="mets-url" @invalid="invalidate"
-                  placeholder="Put a METS URL in here!"
-                  :class="{'is-danger': isDisabled}">
+                   @click="removeError" name="mets-url" @invalid="invalidate"
+                   placeholder="Put a METS URL in here!"
+                   :class="{'is-danger': isDisabled}">
+            <span v-if="errorMessage" class="help is-danger">{{ errorMessage }}</span>
           </p>
           <p class="column">
-            <button @click="submitUrl" class="button is-primary is-large"
+            <button @click="submitUrl" class="button is-primary is-large iiif-btn"
                     type="submit" :disabled="isDisabled"
                     :class="{'is-disabled': isDisabled, 'is-loading': isLoading}">
-              IIIF it!
+              <img src="/static/img/iiif_128.png" alt="IIIF it!">
             </button>
           </p>
         </div>
