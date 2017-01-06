@@ -329,6 +329,7 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
     server_mime = resp.headers['Content-Type'].split(';')[0]
     if jpeg_only and server_mime not in JPEG_MIMES:
         return None
+    server_mime = server_mime.replace('jpg', 'jpeg')
     try:
         # TODO: Log a warning if mimetype and server_mime mismatch
         img = Image.open(io.BytesIO(resp.content))
