@@ -29,25 +29,6 @@ MetsTocEntry = namedtuple('MetsTocEntry', ('children', 'phys_ids', 'log_id',
                                            'label', 'type'))
 
 
-def get_basic_info(mets_url):
-    tree = etree.parse(mets_url)
-    doc = MetsDocument(tree, url=mets_url)
-    doc.read_metadata()
-    thumb_urls = doc._xpath(
-        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
-    if not thumb_urls:
-        thumb_urls = doc._xpath(
-            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
-    return {
-        'label':  doc.metadata['title'][0],
-        'thumbnail': thumb_urls[0] if thumb_urls else None,
-        'attribution': {
-            'logo': doc.metadata['logo'],
-            'owner': doc.metadata['attribution']
-        }
-    }
-
-
 class MetsImportError(Exception):
     def __init__(self, message, debug_info=None):
         super().__init__(message)
@@ -65,14 +46,16 @@ class MetsDocument:
     def __init__(self, mets_tree, primary_id=None, url=None):
         self.url = url
         self._tree = mets_tree
+        self._rootmods = self._xpath("(.//mods:mods)[1]")[0]
 
         self.identifiers = {
             e.get('type'): e.text
-            for e in self._findall(".//mods:mods[1]/mods:identifier")}
+            for e in self._xpath("./mods:identifier", self._rootmods)}
         recordid_elem = self._find(
-            ".//mods:mods[1]//mods:recordInfo/mods:recordIdentifier")
+            ".//mods:recordInfo/mods:recordIdentifier", self._rootmods)
         if recordid_elem is not None:
-            self.identifiers[recordid_elem.get('source')] = recordid_elem.text
+            key = recordid_elem.get('source')
+            self.identifiers[key] = recordid_elem.text
         self.primary_id = primary_id or self._get_unique_identifier()
 
         self.files = None
@@ -116,7 +99,7 @@ class MetsDocument:
 
     def _read_persons(self):
         persons = defaultdict(list)
-        name_elems = self._xpath(".//mods:mods[1]/mods:name")
+        name_elems = self._xpath("./mods:name", self._rootmods)
         for e in name_elems:
             name = self._parse_name(e)
             role = self._findtext("./mods:role/mods:roleTerm", e)
@@ -127,7 +110,7 @@ class MetsDocument:
         return persons
 
     def _read_origin(self):
-        info_elem = self._find(".//mods:mods[1]/mods:originInfo")
+        info_elem = self._find("./mods:originInfo", self._rootmods)
         return {
             'publisher': self._findtext("./mods:publisher", info_elem),
             'pub_place': self._findtext("./mods:place/mods:placeTerm",
@@ -141,18 +124,20 @@ class MetsDocument:
             if identifier:
                 break
             identifier = self._findtext(
-                ".//mods:mods[1]/mods:identifier[@type='{}']".format(type_))
+                "./mods:identifier[@type='{}']".format(type_),
+                self._rootmods)
         if not identifier:
             # MODS recordIdentifier, usually available on ZVDD documents
             identifier = self._findtext(
-                ".//mods:mods[1]/mods:recordInfo/mods:recordIdentifier")
+                "./mods:recordInfo/mods:recordIdentifier",
+                self._rootmods)
         if not identifier:
             # Random identifier
             identifier = shortuuid.uuid()
         return identifier
 
     def _read_titles(self):
-        title_elems = self._findall(".//mods:mods[1]/mods:titleInfo")
+        title_elems = self._findall("./mods:titleInfo", self._rootmods)
         if not title_elems:
             # For items with no title of their own that are part of a larger
             # multi-volume work
@@ -171,9 +156,15 @@ class MetsDocument:
         self.metadata.update(self._read_origin())
         self.metadata['title'] = self._read_titles()
 
-        self.metadata['attribution'] = "<a href='{}'>{}</a>".format(
-            self._findtext(".//mets:rightsMD//dv:ownerSiteURL"),
-            self._findtext(".//mets:rightsMD//dv:owner"))
+        owner_url = self._findtext(".//mets:rightsMD//dv:ownerSiteURL")
+        owner = self._findtext(".//mets:rightsMD//dv:owner")
+        if owner_url:
+            self.metadata['attribution'] = "<a href='{}'>{}</a>".format(
+                owner_url, owner or owner_url)
+        elif owner:
+            self.metadata['attribution'] = owner
+        else:
+            self.metadata['attribution'] = 'Unknown'
         self.metadata['logo'] = self._findtext(
             ".//mets:rightsMD//dv:ownerLogo")
 
@@ -186,7 +177,7 @@ class MetsDocument:
             ".//mets:fileGrp[@USE='DOWNLOAD']/"
             "mets:file[@MIMETYPE='application/pdf']/"
             "mets:FLocat/@xlink:href")
-        if pdf_url:
+        if pdf_url and len(pdf_url) == 1:
             self.metadata['see_also'].append(
                 {'@id': pdf_url, 'format': 'application/pdf'})
         self.metadata['related'] = self._findtext(

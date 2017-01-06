@@ -1,8 +1,10 @@
 import functools
 import json
+import logging
 import mimetypes
 from urllib.parse import urlparse
 
+import lxml.etree as ET
 import requests
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
@@ -11,7 +13,7 @@ from validate_email import validate_email
 from . import mets
 from .models import Identifier, Manifest, IIIFImage
 from .tasks import queue, failed_queue, get_redis, import_mets_job
-from .iiif import make_manifest_collection
+from .iiif import make_manifest_collection, make_label
 
 
 view = Blueprint('view', __name__)
@@ -101,6 +103,26 @@ def api_resolve(identifier):
         return redirect(url_for('iiif.get_manifest', manif_id=manifest_id))
 
 
+def _get_basic_info(mets_url):
+    tree = ET.parse(mets_url)
+    doc = mets.MetsDocument(tree, url=mets_url)
+    doc.read_metadata()
+    thumb_urls = doc._xpath(
+        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
+    if not thumb_urls:
+        thumb_urls = doc._xpath(
+            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
+    return {
+        'metsurl': mets_url,
+        'label': make_label(doc.metadata),
+        'thumbnail': thumb_urls[0] if thumb_urls else None,
+        'attribution': {
+            'logo': doc.metadata['logo'],
+            'owner': doc.metadata['attribution']
+        }
+    }
+
+
 @api.route('/api/import', methods=['POST'])
 def api_import():
     mets_url = request.json.get('url')
@@ -113,16 +135,17 @@ def api_import():
         return jsonify({
             'message': 'There is no METS available at the given URL.'}), 400
     try:
-        job_meta = mets.get_basic_info(mets_url)
-        job_meta['metsurl'] = mets_url
+        job_meta = _get_basic_info(mets_url)
         job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
+        job.refresh()
         status_url = url_for('api.api_task_status', task_id=job.id,
                              _external=True)
         response = jsonify(_get_job_status(job.id))
         response.status_code = 202
         response.headers['Location'] = status_url
     except Exception as e:
-        response = jsonify({'message': e.message})
+        logging.exception(e)
+        response = jsonify({'message': str(e)})
         response.status_code = 500
     return response
 
@@ -137,15 +160,13 @@ def _get_job_status(job):
     status = job.get_status()
     out = {'id': job.id,
            'status': status}
+    out.update(job.meta)
     if status == 'failed':
         out.update(job.meta)
     elif status == 'queued':
         job_ids = queue.get_job_ids()
         out['position'] = job_ids.index(job.id) if job.id in job_ids else None
-    elif status == 'started':
-        out.update(job.meta)
     elif status == 'finished':
-        out.update(job.meta)
         out['result'] = job.result
     return out
 

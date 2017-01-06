@@ -71,7 +71,7 @@ Vue.component("JobDisplay", {
     },
     completionRatio: function() {
       if (this.job.status === 'queued') {
-        return ((this.queueLength + 1) - (this.job.position + 1)) / this.queueLength + 1;
+        return ((this.queueLength + 1) - (this.job.position + 1)) / (this.queueLength + 1);
       } else if (this.job.status === 'started') {
         return this.job.current_image / this.job.total_images;
       } else {
