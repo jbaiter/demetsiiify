@@ -8,6 +8,7 @@ from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
 from validate_email import validate_email
 
+from . import mets
 from .models import Identifier, Manifest, IIIFImage
 from .tasks import queue, failed_queue, get_redis, import_mets_job
 from .iiif import make_manifest_collection
@@ -111,12 +112,18 @@ def api_import():
     if not resp:
         return jsonify({
             'message': 'There is no METS available at the given URL.'}), 400
-    job = queue.enqueue(import_mets_job, mets_url)
-    status_url = url_for('api.api_task_status', task_id=job.id,
-                         _external=True)
-    response = jsonify(_get_job_status(job.id))
-    response.status_code = 202
-    response.headers['Location'] = status_url
+    try:
+        job_meta = mets.get_basic_info(mets_url)
+        job_meta['metsurl'] = mets_url
+        job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
+        status_url = url_for('api.api_task_status', task_id=job.id,
+                             _external=True)
+        response = jsonify(_get_job_status(job.id))
+        response.status_code = 202
+        response.headers['Location'] = status_url
+    except Exception as e:
+        response = jsonify({'message': e.message})
+        response.status_code = 500
     return response
 
 
@@ -138,6 +145,7 @@ def _get_job_status(job):
     elif status == 'started':
         out.update(job.meta)
     elif status == 'finished':
+        out.update(job.meta)
         out['result'] = job.result
     return out
 
@@ -180,11 +188,11 @@ def sse_stream(task_id):
     return current_app.response_class(gen(redis), mimetype="text/event-stream")
 
 
-@api.route('/api/notify')
+@api.route('/api/tasks/notify', methods=['POST'])
 def register_email_notification():
     recipient = request.json['recipient']
-    job_ids = request.json['job_ids']
-    if validate_email(recipient, verify=True):
+    job_ids = request.json['jobs']
+    if not validate_email(recipient, verify=True):
         return jsonify({'error': 'The email passed is not valid!'}), 400
     redis = get_redis()
     jobs_key = 'notifications.{}.jobs'.format(recipient)
@@ -193,7 +201,8 @@ def register_email_notification():
     for job_id in job_ids:
         batch.sadd('recipients.{}'.format(job_id), recipient)
     batch.execute()
-    return jsonify({'jobs': redis.smembers(jobs_key)})
+    return jsonify({'jobs': [e.decode('utf8')
+                             for e in redis.smembers(jobs_key)]})
 
 
 # IIIF Endpoints

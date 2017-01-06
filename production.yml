@@ -26,3 +26,6 @@ services:
       SERVER_NAME:
       PREFERRED_URL_SCHEME:
       SECRET_KEY:
+      SMTP_USER:
+      SMTP_SERVER:
+      SMTP_PASSWORD:

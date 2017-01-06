@@ -29,6 +29,25 @@ MetsTocEntry = namedtuple('MetsTocEntry', ('children', 'phys_ids', 'log_id',
                                            'label', 'type'))
 
 
+def get_basic_info(mets_url):
+    tree = etree.parse(mets_url)
+    doc = MetsDocument(tree, url=mets_url)
+    doc.read_metadata()
+    thumb_urls = doc._xpath(
+        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
+    if not thumb_urls:
+        thumb_urls = doc._xpath(
+            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
+    return {
+        'label':  doc.metadata['title'][0],
+        'thumbnail': thumb_urls[0] if thumb_urls else None,
+        'attribution': {
+            'logo': doc.metadata['logo'],
+            'owner': doc.metadata['attribution']
+        }
+    }
+
+
 class MetsImportError(Exception):
     def __init__(self, message, debug_info=None):
         super().__init__(message)
@@ -196,7 +215,7 @@ class MetsDocument:
             (id_, location, mimetype)
             for id_, location, mimetype in
             (self._get_image_specs(e) for e in self._findall(".//mets:file"))
-            if location.startswith('http')]
+            if location and location.startswith('http')]
         with ThreadPoolExecutor(max_workers=4) as pool:
             futs = []
             for id_, loc, mime, in mets_info:
@@ -283,10 +302,12 @@ class MetsDocument:
     def _get_image_specs(self, felem):
         image_id = felem.get('ID')
         mimetype = felem.get('MIMETYPE')
-        # Seriously, I loathe XML namespaces...
-        location = (
-            self._find("./mets:FLocat[@LOCTYPE='URL']", felem)
-                .get('{%s}href' % (NAMESPACES['xlink'])))
+        location = self._xpath(
+            "./mets:FLocat[@LOCTYPE='URL']/@xlink:href", felem)
+        if location:
+            location = location[0]
+        else:
+            location = None
         return image_id, location, mimetype
 
 

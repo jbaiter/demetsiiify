@@ -1,243 +1,42 @@
 html, body {
-  width: 100%;
-  max-width: 1200px;
-  text-align: center;
-  height: calc(100% - 4em);
-  margin: 0 auto;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-body {
-  line-height: 1.7em;
-  font-size: 13px;
-}
-
-h1, h2, h3, h4, h5, h6, label {
-    color: #34495e;
-}
-
-.l-box {
-    padding: 1em;
-}
-
-.l-box-lrg {
-    padding: 2em;
-    border-bottom: 1px solid rgba(0,0,0,0.1);
-}
-
-.is-center {
-    text-align: center;
-}
-
-.pure-form label {
-    margin: 1em 0 0;
-    font-weight: bold;
-    font-size: 100%;
-}
-
-.pure-form input[type] {
-    color: black;
-    border: 2px solid #ddd;
-    box-shadow: none;
-    font-size: 100%;
-}
-
-.pure-button-primary {
-    background: #00bc99;
-    color: white;
-    border-radius: 5px;
-    font-size: 120%;
-}
-
-.home-menu {
-    padding: 0.5em;
-    text-align: center;
-    box-shadow: 0 1px 1px rgba(0,0,0, 0.10);
-}
-
-.pure-menu.pure-menu-fixed {
-    border-bottom: 1 px solid black;
-}
-
-.home-menu .pure-menu-heading {
-    color: black;
-    font-weight: 200;
-    font-size: 120%;
-    text-transform: none;
-}
-
-.home-menu .pure-menu-selected a {
-    color: black;
-}
-
-.home-menu a {
-    color: #6FBEF3;
-}
-.home-menu li a:hover,
-.home-menu li a:focus {
-    background: none;
-    border: none;
-    color: #AECFE5;
-}
-
-.import-container {
-  height: 100%;
-}
-
-.mets-importer {
-  width: 100%;
-  height: 100%;
-  margin-top: 4em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-}
-
-.mets-input, .import-status {
-    font-size: 20px;
-    font-weight: bold;
-    padding: 1em 1.6em;
-    font-weight: 100;
-    line-height: 1em;
-    text-align: center;
-    width: 100%;
-}
-
-.mets-input input[type='url'] {
-  width: 75%;
-  height: 3em;
-}
-
-.mets-input button {
-  height: 2.5em;
-  background: none;
-  border: 1px solid black;
-  color: black;
-}
-
-.mets-input button[disabled] {
-  border: 1px solid lightgray;
+  background-color: white;
 }
 
 .footer {
-  text-align: right;
+  background-color: white;
 }
 
-@media (max-width: 32em) {
-  .mets-input input {
-    width: 100%;
-  }
+/* See comment on the corresponding element */
+#nav-toggle-state:checked ~ .nav-menu {
+  display: block;
 }
 
-@media (min-width: 48em) {
-  body {
-    font-size: 16px;
-  }
-
-  .content {
-    padding: 1em;
-  }
-  .home-menu {
-    text-align: left;
-  }
-  .home-menu ul {
-    float: right;
-  }
+.mets-preview.image {
+  max-height: 128px;
 }
 
-#viewer {
-  width: 100%;
-  height: calc(100% - 4em);
-  margin-top: 4em;
-  position: relative;
-  line-height: initial;
-  text-align: initial;
+.mets-preview img {
+  max-height: 128px;
+  width: auto;
 }
 
-#viewer:fullscreen {
-  height: 100%;
-  margin-top: 0;
+.attribution img {
+  max-width: 64px;
 }
 
-.progressbar {
-    width: 70%;
-    height: 1.8em;
-    padding: .5em .6em;
-    border: 2px solid #ddd;
-    display: inline-block;
-    vertical-align: middle;
-}
-
-.progress {
-    background: lightgray;
-    height: 1.8em;
-    width: 0%;
-    max-width: 100%;
-    float: left;
-    transition: width .5s;
-}
-
-.job-status {
-  display: inline-flex;
-  align-items: center;
-  height: 1.5em;
-  border: 1px solid black;
-  border-radius: 5px;
-  font-size: 120%;
-  vertical-align: middle;
-  text-align: center;
-  padding: 0.5em 1em;
+.jobs {
+  margin-top: 5vh;
+  max-width: 1200px;
 }
 
 .notification-form {
-  align-self: flex-start;
-  text-align: left;
-  margin-left: 1em;
+  margin-bottom: 1vh;
 }
 
-.notification-form label {
-  font-weight: normal;
-  font-size: 13px;
+.job-display {
+  margin-bottom: 1vh;
 }
 
-.notification-form input[type=email] {
-  height: 1.75em;
-}
-
-.notification-form button {
-  font-size: 13px;
-}
-
-.error-message {
-  display: block;
-  text-align: left;
-  margin-left: 1.5em;
-  margin-top: 0.5em;
-  font-size: 0.75em;
-  color: red;
-}
-
-input.form-control.invalid {
-  border: 2px solid red;
-}
-
-.import-error {
-  background: red;
-  color: white;
-  padding: 1em;
-  position: relative;
-}
-
-.close {
-  position: absolute;
-  top: 0;
-  right: 0;
-}
-
-.close:after {
-  display: inline-block;
-  content: "\00d7";
-  cursor: pointer;
+input.metsurl {
+  width: 100% !important;
 }

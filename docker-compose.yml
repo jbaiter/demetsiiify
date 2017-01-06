@@ -15,6 +15,10 @@ services:
     links:
       - postgres
       - redis
+    environment:
+      SMTP_USER:
+      SMTP_SERVER:
+      SMTP_PASSWORD:
     command: 'python manage.py worker'
 
   webapp:

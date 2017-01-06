@@ -40,21 +40,20 @@ def import_mets_job(mets_url):
         tree = ET.fromstring(xml)
         doc = mets.MetsDocument(tree, url=mets_url)
         if current_app.config['DUMP_METS']:
-            xml_path = os.path.join("current_app.config['DUMP_METS']",
-                                    doc.id + ".xml")
+            xml_path = os.path.join(current_app.config['DUMP_METS'],
+                                    doc.primary_id + ".xml")
             with open(xml_path, "w") as fp:
                 fp.write(ET.tostring(tree, pretty_print=True))
-
         times = deque(maxlen=50)
         start_time = time.time()
         for idx, total in doc.read_files(jpeg_only=True, yield_progress=True):
             duration = time.time() - start_time
             times.append(duration)
             if job:
-                job.meta = dict(
+                job.meta.update(dict(
                     current_image=idx,
                     total_images=total,
-                    eta=(sum(times)/len(times)) * (total - idx))
+                    eta=(sum(times)/len(times)) * (total - idx)))
                 job.save()
             start_time = time.time()
         if not doc.files:
@@ -136,9 +135,9 @@ def notify_email(recipient):
     msg['From'] = 'notifications@{}'.format(current_app.config['SERVER_NAME'])
     msg['To'] = recipient
     msg.set_content(EMAIL_TEMPLATE.format("\n".join(
-        url_for('view_endpoint', manifest_id=manifest_id, _external=True)
+        url_for('view.view_endpoint', manifest_id=manifest_id, _external=True)
         for manifest_id in manifest_ids)))
     with smtplib.SMTP(current_app.config['SMTP_SERVER']) as s:
         s.login(current_app.config['SMTP_USER'],
                 current_app.config['SMTP_PASSWORD'])
-        s.sendmessage(msg)
+        s.send_message(msg)

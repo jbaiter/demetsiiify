@@ -10,45 +10,6 @@
   });
 })([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
 
-Vue.component("ProgressBar", {
-  props: ['width'],
-  template: '\
-    <div class="progressbar">\
-      <div class="progress" :style="{width: (width || 0) * 100 + \'%\'}"><div>\
-   </div>'
-});
-
-Vue.component("ResultDisplay", {
-  props: ['manifestUrl'],
-  // TODO: Show spinner until manifest is loaded?
-  template: '<div>TODO</div>',
-  data: function() {
-    return {
-      manifest: null
-    };
-  },
-  created: function() {
-    var vm = this;
-    axios.get(this.manifestUrl)
-      .then(function(response) {
-        vm.manifest = response.data;
-      });
-  },
-  computed: {
-    previewImage: function() {
-      return this.manifest.thumbnail;
-    },
-    numberOfPages: function() {
-      return this.manifest.sequences[0].canvases.length;
-    },
-    label: function() {
-      return this.manifest.label;
-    },
-    viewerUrl: function() {
-      return "/view/" + this.manifest['@id'].split('/').slice(-2)[0];
-    }
-  }
-});
 
 Vue.component("JobDisplay", {
   props: ['job'],
@@ -57,39 +18,75 @@ Vue.component("JobDisplay", {
       queueLength: this.job.position + 1
     };
   },
-  template: '\
-    <div class="import-status">\
-      <template v-if="showProgressBar">\
-        <ProgressBar v-if="completionRatio !== null"\
-                     :width="completionRatio" />\
-        <div class="job-status">{{ job.status }}</div>\
-      </template>\
-      <p v-else-if="showError" class="import-error">\
-        {{ job.message }}\
-        <a @click="triggerClose" class="close"/>\
-      </p>\
-      <result-display v-else :manifest-url="this.job.result" />\
-    </div>',
+  template: `
+    <div class="job-display">
+      <div v-if="job.status === 'failed'" class="notification is-danger">
+        <button class="delete" @click="triggerClose"></button>
+        {{ job.message }}
+      </div>
+      <div v-else class="box">
+        <article class="media">
+          <figure v-if="job.thumbnail" class="media-left">
+            <p class="mets-preview image">
+              <img :src="job.thumbnail">
+            </p>
+          </figure>
+          <div class="media-content">
+            <div class="content">
+              <h3>{{ job.label || job.metsurl }}</h3>
+              <p v-if="job.label">
+                <a :href="job.metsurl">
+                  {{ job.metsurl }}
+                </a>
+              </p>
+              <p v-if="job.attribution" class="attribution">
+                <img :src="job.attribution.logo">
+                <span v-html="job.attribution.owner"></span>
+              </p>
+            </div>
+            <div v-if="showProgressBar" class="columns level">
+              <div class="column">
+                <span class="tag is-large is-primary">{{ job.status }}</span>
+              </div>
+              <div class="column is-10">
+                <progress class="progress" :value="completionRatio" max="1">
+                  {{ job.status }}
+                </progress>
+              </div>
+            </div>
+            <p v-if="job.status === 'finished'" class="control has-addons">
+              <input @click="onMetsUrlClick" :value="job.result" type="url"
+                     class="input metsurl" ref="metsurl" readonly>
+              <a :href="viewerUrl" class="button is-info">Open in viewer</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>`,
   computed: {
     showProgressBar: function() {
       return (this.job.status === 'queued' || this.job.status === 'started');
     },
-    showError: function() {
-      return this.job.status === 'failed';
-    },
     completionRatio: function() {
       if (this.job.status === 'queued') {
-        return (this.queueLength - this.job.position + 1) / this.queueLength;
+        return ((this.queueLength + 1) - (this.job.position + 1)) / this.queueLength + 1;
       } else if (this.job.status === 'started') {
         return this.job.current_image / this.job.total_images;
       } else {
         return null;
       }
+    },
+    viewerUrl: function() {
+      var manifestId = this.job.result.split('/').splice(-2)[0];
+      return `/view/${manifestId}`;
     }
   },
   methods: {
     triggerClose: function() {
       this.$emit('dismiss-job', this.job.id);
+    },
+    onMetsUrlClick: function() {
+      this.$refs.metsurl.setSelectionRange(0, this.$refs.metsurl.value.length);
     }
   }
 });
@@ -102,30 +99,31 @@ Vue.component("NotificationForm", {
       recipient: '',
       wasSubmitted: false,
       errorMessage: null,
-      invalid: false
+      invalid: false,
+      isLoading: false
     };
   },
-  template: '\
-    <form class="pure-form notification-form" @submit.prevent>\
-      <fieldset>\
-        <label v-if="!viewForm" for="notification-checkbox">\
-          <input name="notification-checkbox" v-model="viewForm" \
-                 type="checkbox" class="form-control"> \
-                 Notify me via email\
-        </label>\
-        <template v-else-if="!wasSubmitted">\
-          <input v-model="recipient" :class="{invalid: isDisabled}" type="email"\
-                 name="recipient" @invalid="invalidate"\
-                 @click="onClick" placeholder="Email" class="pure-form-control">\
-          <button @click="registerForNotifications" :disabled="isDisabled" type="submit"\
-                  class="pure-button pure-button-secondary">Submit</button>\
-          <span v-if="isDisabled" class="error-message">{{ errorMessage }}</span>\
-        </template>\
-        <span v-else>\
-          You will be notified at {{ recipient }} once the manifests are finished\
-        </span>\
-      <fieldset>\
-    </form>',
+  template: `
+    <div class="notification-form">
+      <p v-if="!viewForm" class="control">
+        <label class="checkbox">
+          <input v-model="viewForm" type="checkbox"> Notify me via email
+        </label>
+      </p>
+      <p v-else-if="!wasSubmitted" class="control has-addons">
+        <input v-model="recipient" :class="{'is-danger': isDisabled}"
+               @invalid="invalidate" @click="removeError"
+               class="input" type="email" placeholder="Enter your email">
+        <button @click="registerForNotifications" :disabled="isDisabled"
+                :class="{'is-loading': isLoading}"
+                type="submit" class="button">Submit</button>
+        <span v-if="isDisabled" class="help is-danger">{{ errorMessage }}</span>\
+      </p>
+      <div v-else class="notification">
+        <button @click="dismiss" class="delete"></button>
+        You will be notified at {{ recipient }} once the manifests are finished
+      </p>
+    </div>`,
   computed: {
     isDisabled: function() {
       return this.invalid || this.errorMessage !== null;
@@ -135,16 +133,19 @@ Vue.component("NotificationForm", {
     invalidate: function() {
       this.invalid = true;
     },
-    onClick: function() {
+    removeError: function() {
       this.errorMessage = null;
       this.invalid = false;
     },
     registerForNotifications: function() {
       var vm = this;
-      axios.post('/api/status/notify', {recipient: this.recipient,
-                                        jobs: this.jobIds})
+      vm.isLoading = true;
+      axios.post('/api/tasks/notify', {recipient: this.recipient,
+                                       jobs: this.jobIds})
         .then(function(resp) {
           vm.wasSubmitted = true;
+          vm.$emit('subscribe-to-notifications', vm.recipient);
+          vm.isLoading = false;
         })
         .catch(function(err) {
           if (err.response) {
@@ -152,7 +153,11 @@ Vue.component("NotificationForm", {
           } else {
             console.error(err);
           }
+          vm.isLoading = false;
         });
+    },
+    dismiss: function() {
+      this.$emit('dismiss-notification');
     }
   }
 });
@@ -164,49 +169,64 @@ Vue.component("MetsForm", {
     return {
       metsUrl: '',
       errorMessage: null,
-      invalid: false
+      invalid: false,
+      showNotificationForm: true,
+      subscribedToNotifications: false,
+      isLoading: false
     };
   },
-  template: '\
-    <div class="pure-form mets-input">\
-      <NotificationForm v-if="hasJobs" :jobIds="jobIds" />\
-      <form @submit.prevent>\
-        <fieldset>\
-          <input v-model="metsUrl" type="url" class="form-control"\
-                 @click="onClick" name="mets-url" @invalid="invalidate" \
-                 placeholder="Put a METS URL in here!"\
-                 :class="{invalid: isDisabled}">\
-          <button @click="submitUrl" class="pure-button-primary pure-button"\
-                  type="submit" :disabled="isDisabled" >\
-            IIIF it!\
-          </button>\
-          <span v-if="isDisabled" class="error-message">{{ errorMessage }}</span>\
-        </fieldset>\
-      </form>\
-    </div>',
+  template: `
+    <div class="container has-text-centered">
+      <NotificationForm v-if="showNotificationForm && hasJobs" :jobIds="jobIds"
+                        @subscribe-to-notifications="onSubscribeToNotifications"
+                        @dismiss-notification="onDismissNotification"/>
+      <form @submit.prevent>
+        <div class="columns">
+          <p class="column is-11">
+            <input v-model="metsUrl" type="url" class="input is-large"
+                  @click="removeError" name="mets-url" @invalid="invalidate"
+                  placeholder="Put a METS URL in here!"
+                  :class="{'is-danger': isDisabled}">
+          </p>
+          <p class="column">
+            <button @click="submitUrl" class="button is-primary is-large"
+                    type="submit" :disabled="isDisabled"
+                    :class="{'is-disabled': isDisabled, 'is-loading': isLoading}">
+              IIIF it!
+            </button>
+          </p>
+        </div>
+      </form>
+    </div>`,
   computed: {
     isDisabled: function() {
       return this.invalid || this.errorMessage !== null;
     },
     hasJobs: function() {
-      return this.jobIds.size > 0;
+      return this.jobIds.length > 0;
     }
   },
   methods: {
     invalidate: function() {
       this.invalid = true;
     },
-    onClick: function() {
+    removeError: function() {
       this.invalid = false;
       this.errorMessage = null;
     },
     submitUrl: function() {
       var vm = this;
+      vm.isLoading = true;
       axios.post('/api/import', {url: this.metsUrl})
         .then(function(resp) {
           vm.errorMessage = null;
           vm.metsUrl = '';
           vm.$emit("new-job", resp.data);
+          if (vm.subscribedToNotifications) {
+            axios.post('/api/notify', {recipient: vm.subscriptionAddress,
+                                       job_ids: [resp.data.id]});
+          }
+          vm.isLoading = false;
         })
         .catch(function(err) {
           if (err.response) {
@@ -214,7 +234,15 @@ Vue.component("MetsForm", {
           } else {
             console.error(err);
           }
+          vm.isLoading = false;
         });
+    },
+    onDismissNotification: function() {
+      this.showNotificationForm = false;
+    },
+    onSubscribeToNotifications: function(recipient) {
+      this.subscribedToNotifications = true;
+      this.subscriptionAddress = recipient;
     }
   }
 });
@@ -226,12 +254,39 @@ var app = new Vue({
     jobs: {},
     streams: {}
   },
-  template: '\
-    <div class="mets-importer">\
-      <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />\
-      <JobDisplay v-for="jobId in jobIds"\
-                  :job="jobs[jobId]" @dismiss-job="onJobDismissed" />\
-    </div>',
+  template: `
+    <section class="hero" :class="{'is-fullheight': jobIds.length === 0}">
+      <div class="hero-head">
+        <nav class="nav">
+          <div class="nav-left">
+            <a class="nav-item is-brand" href="/">
+              demetsiiify
+            </a>
+          </div>
+          <div class="nav-right nav-menu">
+            <a class="nav-item" href="/api-docs">API</a>
+            <a class="nav-item" href="/about">About</a>
+          </div>
+        </nav>
+      </div>
+      <div class="hero-body">
+        <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />
+        <div class="jobs">
+          <JobDisplay v-for="jobId in jobIds"
+                      :job="jobs[jobId]"
+                      @dismiss-job="onJobDismissed" />
+        </div>
+      </div>
+      <div class="hero-foot">
+        <div class="footer">
+          <div class="content has-text-centered">
+            <p>
+              Created by <a href="https://github.com/jbaiter">Johannes Baiter</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>`,
   methods: {
     onJobCreated: function(job) {
       this.jobIds.push(job.id);
@@ -240,6 +295,9 @@ var app = new Vue({
       var eventStream = new EventSource("/api/tasks/" + job.id + "/stream");
       eventStream.addEventListener('message', function(event) {
         vm.$set(vm.jobs, job.id, JSON.parse(event.data));
+        if (event.data.status === 'finished') {
+          eventStream.close();
+        }
       });
       this.$set(this.streams, job.id, eventStream);
     },
@@ -251,4 +309,4 @@ var app = new Vue({
 });
 
 
-app.$mount(".mets-importer");
+app.$mount(".app");

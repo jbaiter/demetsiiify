@@ -2,22 +2,65 @@
 
 {% block title %}demetsiiify{% endblock %}
 
+{% block header %}
+{# We implement our own header inside of the hero unit #}
+{% endblock %}
+
 {% block content %}
-<div class="import-container">
-  <div class='mets-importer'>
-    <div class="pure-form mets-input">
-      <fieldset>
-        <input type="url" class="form-control" placeholder="Put a METS URL in here!">
-        <button class="pure-button-primary pure-button" type="button">IIIF it!</button>
-      </fieldset>
+<div class="app">
+  <section class="hero is-fullheight">
+    <div class="hero-head">
+      <nav class="nav">
+        <div class="nav-left">
+          <a class="nav-item is-brand" href="/">
+            demetsiiify
+          </a>
+        </div>
+
+        <!-- This is a a hacky way to get the navbar toggle on mobile without
+             using JavaScript: Make the display dependent on the state of
+             the hidden checkbox. Clicking the label also changes the state
+             of the checkbox, allowing this trick to work -->
+        <label class="nav-toggle" for="nav-toggle-state">
+          <span></span>
+          <span></span>
+          <span></span>
+        </label>
+        <input type="checkbox" class="is-hidden" id="nav-toggle-state" />
+
+        <div class="nav-right nav-menu">
+          <a class="nav-item" href="/api-docs">API</a>
+          <a class="nav-item" href="/about">About</a>
+        </div>
+      </nav>
     </div>
-  </div>
+    <div class="hero-body">
+      <div class="container has-text-centered">
+        <div class="columns">
+          <p class="column is-11">
+            <input class="input is-large" type="url" placeholder="Put a METS URL in here">
+          </p>
+          <p class="column">
+            <button class="button is-primary is-large">IIIF it!</button>
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="hero-foot">
+      <div class="footer">
+        <div class="content has-text-centered">
+          <p>
+            Created by <a href="https://github.com/jbaiter">Johannes Baiter</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
 </div>
 {% endblock %}
 
 {% block footer %}
-[[ super() ]]
 <script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
 <script src="[[ url_for('static', filename='vendor/axios.min.js') ]]"></script>
-<script src="[[ url_for('static', filename='js/import_new.js') ]]"></script>
+<script src="[[ url_for('static', filename='js/import.js') ]]"></script>
 {% endblock %}

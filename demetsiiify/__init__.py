@@ -40,6 +40,9 @@ def create_app():
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['ITEMS_PER_PAGE'] = 200
     app.config['DUMP_METS'] = os.environ.get('DUMP_METS')
+    app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
+    app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
+    app.config['SMTP_PASSWORD'] = os.environ.get('SMTP_PASSWORD')
     db.init_app(app)
     app.before_request(_force_preferred_scheme)
     with app.app_context():
