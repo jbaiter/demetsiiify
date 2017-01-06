@@ -56,3 +56,16 @@ input.metsurl {
 .metsurl img {
   max-height: 1.5em;
 }
+
+.message-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.message-header .delete {
+  margin-left: 0.75em;
+}
+
+.footer .content {
+  color: lightgray;
+}

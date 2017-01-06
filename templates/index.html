@@ -35,20 +35,22 @@
       </nav>
     </div>
     <div class="hero-body">
-      <div class="container has-text-centered">
+      <div class="container">
         <div class="columns">
-          <p class="column is-11">
+          <p class="column is-11 control">
             <input class="input is-large" type="url" placeholder="Put a METS URL in here">
           </p>
           <p class="column">
-            <button class="button is-primary is-large">IIIF it!</button>
+            <button class="button is-primary is-large iiif-btn">
+              <img src="[[ url_for('static', filename='img/iiif_128.png') ]]" alt="IIIF it!">
+            </button>
           </p>
         </div>
       </div>
     </div>
     <div class="hero-foot">
       <div class="footer">
-        <div class="content has-text-centered">
+        <div class="content has-text-right">
           <p>
             Created by <a href="https://github.com/jbaiter">Johannes Baiter</a>
           </p>

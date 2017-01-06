@@ -1,7 +1,7 @@
 import functools
 import json
-import logging
 import mimetypes
+import traceback
 from urllib.parse import urlparse
 
 import lxml.etree as ET
@@ -19,6 +19,13 @@ from .iiif import make_manifest_collection, make_label
 view = Blueprint('view', __name__)
 api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
+
+
+@api.errorhandler(Exception)
+def handle_error(error):
+    return jsonify({
+        'traceback': traceback.format_exc()
+    }), 500
 
 
 class ServerSentEvent(object):
@@ -134,19 +141,14 @@ def api_import():
     if not resp:
         return jsonify({
             'message': 'There is no METS available at the given URL.'}), 400
-    try:
-        job_meta = _get_basic_info(mets_url)
-        job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
-        job.refresh()
-        status_url = url_for('api.api_task_status', task_id=job.id,
-                             _external=True)
-        response = jsonify(_get_job_status(job.id))
-        response.status_code = 202
-        response.headers['Location'] = status_url
-    except Exception as e:
-        logging.exception(e)
-        response = jsonify({'message': str(e)})
-        response.status_code = 500
+    job_meta = _get_basic_info(mets_url)
+    job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
+    job.refresh()
+    status_url = url_for('api.api_task_status', task_id=job.id,
+                            _external=True)
+    response = jsonify(_get_job_status(job.id))
+    response.status_code = 202
+    response.headers['Location'] = status_url
     return response
 
 
@@ -160,9 +162,10 @@ def _get_job_status(job):
     status = job.get_status()
     out = {'id': job.id,
            'status': status}
-    out.update(job.meta)
-    if status == 'failed':
+    if status != 'failed':
         out.update(job.meta)
+    if status == 'failed':
+        out['traceback'] = job.exc_info
     elif status == 'queued':
         job_ids = queue.get_job_ids()
         out['position'] = job_ids.index(job.id) if job.id in job_ids else None

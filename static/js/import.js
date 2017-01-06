@@ -20,10 +20,9 @@ Vue.component("JobDisplay", {
   },
   template: `
     <div class="job-display">
-      <div v-if="job.status === 'failed'" class="notification is-danger">
-        <button class="delete" @click="triggerClose"></button>
-        {{ job.message }}
-      </div>
+      <ErrorDisplay v-if="job.status === 'failed'"
+                    :traceback="job.traceback"
+                    @dismiss="triggerClose" />
       <div v-else class="box">
         <article class="media">
           <figure v-if="job.thumbnail" class="media-left">
@@ -167,12 +166,58 @@ Vue.component("NotificationForm", {
 });
 
 
+Vue.component("ErrorDisplay", {
+  props: ['metsUrl', 'traceback'],
+  data: function() {
+    return {
+      showTraceback: false,
+      url: this.metsUrl
+    };
+  },
+  template: `
+    <article class="message is-danger">
+      <div class="message-header">
+        <p><strong>Could not import METS</strong></p>
+        <button @click="onDismiss" class="delete"></button>
+      </div>
+      <div class="message-body">
+        <div class="container content">
+          <p>
+            Unfortunately we were unable to generate a IIIF manifest from the METS
+            located at
+          <p>
+          <p class="has-text-centered">
+            <a :href="url" target="_blank">{{ url }}</a>.
+          </p>
+          <p>
+            The error was logged in our backend and will be examined. If you wish
+            to help with debugging, you can consult the traceback below and open
+            an issue on GitHub.
+          <p>
+          <button class="button is-danger" @click="toggleTraceback">Traceback</button>
+          <pre v-if="showTraceback">{{ traceback }}</pre>
+        </div>
+      </div>
+    </article>`,
+  methods: {
+    onDismiss: function() {
+      this.$emit('dismiss');
+    },
+    toggleTraceback: function() {
+      this.showTraceback = !this.showTraceback;
+    }
+  }
+});
+
+
 Vue.component("MetsForm", {
   props: ['jobIds'],
   data: function() {
     return {
       metsUrl: '',
       errorMessage: null,
+      traceback: null,
+      showTraceback: false,
       invalid: false,
       showNotificationForm: true,
       subscribedToNotifications: false,
@@ -180,7 +225,7 @@ Vue.component("MetsForm", {
     };
   },
   template: `
-    <div class="container has-text-centered">
+    <div>
       <NotificationForm v-if="showNotificationForm && hasJobs" :jobIds="jobIds"
                         @subscribe-to-notifications="onSubscribeToNotifications"
                         @dismiss-notification="onDismissNotification"/>
@@ -188,7 +233,7 @@ Vue.component("MetsForm", {
         <div class="columns">
           <p class="column is-11 control">
             <input v-model="metsUrl" type="url" class="input is-large"
-                   @click="removeError" name="mets-url" @invalid="invalidate"
+                   @click="removeError" name="metsUrl" @invalid="invalidate"
                    placeholder="Put a METS URL in here!"
                    :class="{'is-danger': isDisabled}">
             <span v-if="errorMessage" class="help is-danger">{{ errorMessage }}</span>
@@ -202,6 +247,8 @@ Vue.component("MetsForm", {
           </p>
         </div>
       </form>
+      <ErrorDisplay v-if="!errorMessage && traceback" @dismiss="onDismissError"
+                    :metsUrl="metsUrl" :traceback="traceback" />
     </div>`,
   computed: {
     isDisabled: function() {
@@ -219,6 +266,11 @@ Vue.component("MetsForm", {
       this.invalid = false;
       this.errorMessage = null;
     },
+    onDismissError: function() {
+      this.invalid = false;
+      this.errorMessage = null;
+      this.traceback = null;
+    },
     submitUrl: function() {
       var vm = this;
       vm.isLoading = true;
@@ -234,8 +286,10 @@ Vue.component("MetsForm", {
           vm.isLoading = false;
         })
         .catch(function(err) {
-          if (err.response) {
+          if (err.response && err.response.data.message) {
             vm.errorMessage = err.response.data.message;
+          } else if (err.response && err.response.data.traceback) {
+            vm.traceback = err.response.data.traceback;
           } else {
             console.error(err);
           }
@@ -275,16 +329,18 @@ var app = new Vue({
         </nav>
       </div>
       <div class="hero-body">
-        <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />
-        <div class="jobs">
-          <JobDisplay v-for="jobId in jobIds"
-                      :job="jobs[jobId]"
-                      @dismiss-job="onJobDismissed" />
+        <div class="container">
+          <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />
+          <div class="jobs">
+            <JobDisplay v-for="jobId in jobIds"
+                        :job="jobs[jobId]"
+                        @dismiss-job="onJobDismissed" />
+          </div>
         </div>
       </div>
       <div class="hero-foot">
         <div class="footer">
-          <div class="content has-text-centered">
+          <div class="content has-text-right">
             <p>
               Created by <a href="https://github.com/jbaiter">Johannes Baiter</a>
             </p>
@@ -300,7 +356,7 @@ var app = new Vue({
       var eventStream = new EventSource("/api/tasks/" + job.id + "/stream");
       eventStream.addEventListener('message', function(event) {
         vm.$set(vm.jobs, job.id, JSON.parse(event.data));
-        if (event.data.status === 'finished') {
+        if (event.data.status === 'finished' || event.data.status === 'failed') {
           eventStream.close();
         }
       });
