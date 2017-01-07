@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import shortuuid
 from sqlalchemy.dialects import postgresql as pg
 
@@ -206,3 +208,64 @@ class Image(db.Model):
                           iiif_id=base_query.excluded.iiif_id)),
             [dict(url=i.url, width=i.width, height=i.height,
                   format=i.format, iiif_id=i.iiif_id) for i in images])
+
+
+class Annotation(db.Model):
+    surrogate_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, unique=True)
+    target = db.Column(db.String)
+    motivation = db.Column(db.String)
+    date = db.Column(db.DateTime)
+    annotation = db.Column(pg.JSONB)
+
+    def __init__(self, annotation):
+        self.id = annotation['@id'].split('/')[-1]
+        self.target = self._extract_target(annotation['on'])
+        self.motivation = annotation['motivation']
+        self.date = datetime.now()
+        self.annotation = annotation
+
+    def _extract_target(self, on):
+        if isinstance(on, str):
+            return on.split('#')[0]
+        elif on['@type'] == 'oa:SpecificResource':
+            return on['full']
+        else:
+            raise ValueError("Cannot deal with on={}".format(on))
+
+    @classmethod
+    def get(cls, id_):
+        return cls.query.filter_by(id=id_).first()
+
+    @classmethod
+    def delete(cls, *annotations):
+        for anno in annotations:
+            db.session.delete(anno)
+        db.session.flush()
+
+    @classmethod
+    def save(cls, *annotations):
+        base_query = pg.insert(cls).returning(Annotation.id)
+        return db.session.execute(
+            base_query.on_conflict_do_update(
+                index_elements=[Annotation.id],
+                set_=dict(annotation=base_query.excluded.annotation,
+                          target=base_query.excluded.target,
+                          motivation=base_query.excluded.motivation,
+                          date=datetime.now())),
+            [dict(id=a.id, target=a.target, motivation=a.motivation,
+                  date=a.date, annotation=a.annotation) for a in annotations])
+
+    @classmethod
+    def search(cls, target=None, motivation=None, date_ranges=None):
+        filter_args = {}
+        if target:
+            filter_args['target'] = target
+        if motivation:
+            filter_args['motivation'] = motivation
+        query = cls.query.filter_by(**filter_args)
+        if date_ranges:
+            query = query.filter(db.or_(
+                *[Annotation.date.between(start, end)
+                  for start, end in date_ranges]))
+        return query

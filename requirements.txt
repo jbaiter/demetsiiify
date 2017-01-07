@@ -3,6 +3,7 @@ Flask
 Flask-SQLAlchemy
 Flask-Script
 flask-autodoc
+flask-migrate
 gevent
 gunicorn
 
@@ -16,6 +17,7 @@ requests
 # Persistence
 psycopg2
 redis
+alembic
 
 # Miscallaneous
 rq  # Task queue

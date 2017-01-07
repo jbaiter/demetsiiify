@@ -7,14 +7,15 @@ from urllib.parse import urlparse, unquote
 
 import lxml.etree as ET
 import requests
+import shortuuid
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
 from flask_autodoc import Autodoc
 from jinja2 import evalcontextfilter, Markup, escape
 from validate_email import validate_email
 
-from . import mets
-from .models import Identifier, Manifest, IIIFImage
+from . import mets, db
+from .models import Identifier, Manifest, IIIFImage, Annotation
 from .tasks import queue, failed_queue, get_redis, import_mets_job
 from .iiif import make_manifest_collection, make_label
 
@@ -455,3 +456,95 @@ def get_image(image_id, region, size, rotation, quality, format):
         abort(501)
     else:
         return redirect(url, 303)
+
+
+@iiif.route('/iiif/annotation/<annotation_id>', methods=['GET'])
+@auto.doc(groups=['iiif'])
+@cors('*')
+def get_annotation(annotation_id):
+    anno = Annotation.get(annotation_id)
+    if anno is None:
+        abort(404)
+    else:
+        return jsonify(anno.annotation)
+
+
+@iiif.route('/iiif/annotation/<annotation_id>', methods=['DELETE'])
+@auto.doc(groups=['iiif'])
+@cors('*')
+def delete_annotation(annotation_id):
+    anno = Annotation.get(annotation_id)
+    if anno is None:
+        abort(404)
+    else:
+        Annotation.delete(anno)
+        db.session.commit()
+        return jsonify(anno.annotation)
+
+
+@iiif.route('/iiif/annotation/<annotation_id>', methods=['PUT'])
+@auto.doc(groups=['iiif'])
+@cors('*')
+def update_annotation(annotation_id):
+    anno = Annotation.get(annotation_id)
+    if anno is None:
+        abort(404)
+    if request.json['@id'].split('/')[-1] != anno.id:
+        abort(400)
+    anno = Annotation(request.json)
+    Annotation.save(anno)
+    db.session.commit()
+    return jsonify(anno.annotation)
+
+
+@iiif.route('/iiif/annotation', methods=['GET'])
+@auto.doc(groups=['iiif'])
+@cors('*')
+def search_annotations():
+    search_args = {}
+    if 'motivation' in request.args:
+        search_args['motivation'] = request.args['motivation']
+    if 'q' in request.args:
+        search_args['target'] = request.args['q']
+    if 'date' in request.args:
+        search_args['date_ranges'] = [
+            r.split('/') for r in request.args['date'].split(' ')]
+    page_num = int(request.args.get('p', '1'))
+    limit = int(request.args.get('limit', '100'))
+    pagination = Annotation.search(**search_args).paginate(
+        page=page_num, per_page=limit, error_out=False)
+    return jsonify({
+        '@context': 'http://iiif.io/api/presentation/2/context.json',
+        '@id': request.url,
+        '@type': 'sc:AnnotationList',
+        'within': {
+            '@type': 'sc:Layer',
+            'total': pagination.total,
+            'first': url_for('iiif.search_annotations', page=1, _external=True,
+                             **{k: v for k, v in request.args.items()
+                                if k != 'page'}),
+            'last': url_for('iiif.search_annotations', page=pagination.pages,
+                            _external=True,
+                            **{k: v for k, v in request.args.items()
+                               if k != 'page'}),
+        },
+        'next': url_for('iiif.search_annotations', page=pagination.next_num,
+                        _external=True,
+                        **{k: v for k, v in request.args.items()
+                           if k != 'page'}),
+        'startIndex': (page_num-1) * pagination.per_page,
+        'resources': [a.annotation for a in pagination.items]
+    })
+
+
+@iiif.route('/iiif/annotation', methods=['POST'])
+@auto.doc(groups=['iiif'])
+@cors('*')
+def create_annotation():
+    anno_data = request.json
+    anno_data['@id'] = url_for('iiif.get_annotation', _external=True,
+                               annotation_id=shortuuid.uuid())
+    anno = Annotation(anno_data)
+    Annotation.save(anno)
+    db.session.commit()
+    return jsonify(anno.annotation)

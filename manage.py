@@ -1,5 +1,6 @@
 from flask import current_app
 from flask_script import Shell, Manager, prompt_bool
+from flask_migrate import Migrate, MigrateCommand
 
 from demetsiiify import db, create_app, make_worker, make_redis
 
@@ -14,8 +15,10 @@ def _make_context():
 
 
 app = create_app()
+migrate = Migrate(app, db)
 manager = Manager(app)
 manager.add_command('shell', Shell(make_context=lambda: _make_context()))
+manager.add_command('db', MigrateCommand)
 
 
 @manager.command

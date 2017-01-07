@@ -21,6 +21,7 @@
 
 {% block footer %}
 <script src="[[ url_for('static', filename='vendor/mirador/mirador.min.js') ]]"></script>
+<script src="[[ url_for('static', filename='js/annotationEndpoint.js') ]]"></script>
 <script>
  (function() {
    window.mirador = Mirador({
@@ -72,13 +73,13 @@
         },
         "sidePanelOptions": {
           "toc" : true,
-          "annotations" : false
         },
-        "annotationLayer": false,
-        "annotationCreation": false,
-        "annotationState": 'annoOff',
         "saveSession": false
-      }]
+      }],
+    "annotationEndpoint": {
+      "name": "demetsiiify",
+      "module": "DemetsiiifyEndpoint"
+    }
   });
  })();
 </script>
