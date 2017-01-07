@@ -74,19 +74,17 @@ Vue.component("JobDisplay", {
                     @dismiss="triggerClose" />
       <div v-else class="box">
         <article class="media">
-          <figure v-if="job.thumbnail" class="media-left">
+          <figure v-if="job.thumbnail" class="media-left has-text-centered">
             <p class="mets-preview image">
               <img :src="job.thumbnail">
             </p>
+            <a :href="job.metsurl" class="metsurl">
+              <img src="/static/img/mets.png">
+            </a>
           </figure>
           <div class="media-content">
             <div class="content">
               <h3>{{ job.label || job.metsurl }}</h3>
-              <p v-if="job.label">
-                <a :href="job.metsurl" class="metsurl">
-                  <img src="/static/img/mets.png">
-                </a>
-              </p>
               <p v-if="job.attribution" class="attribution">
                 <img :src="job.attribution.logo">
                 <span v-html="job.attribution.owner"></span>

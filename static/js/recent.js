@@ -14,7 +14,10 @@ Vue.component('ManifestView', {
           </div>
           <div class="media-content">
             <p class="title is-5 manifest-label">{{ truncatedLabel }}</p>
-            <p class="subtitle is-6" v-html="item.attribution"></p>
+            <p class="subtitle is-6">
+              <img class="attribution-logo" :src="item.attribution_logo">
+              <span v-html="item.attribution" />
+            </p>
           </div>
         </div>
       </div>
