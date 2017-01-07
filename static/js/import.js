@@ -322,8 +322,8 @@ Vue.component("MetsForm", {
           vm.metsUrl = '';
           vm.$emit("new-job", resp.data);
           if (vm.subscribedToNotifications) {
-            axios.post('/api/notify', {recipient: vm.subscriptionAddress,
-                                       job_ids: [resp.data.id]});
+            axios.post('/api/tasks/notify', {recipient: vm.subscriptionAddress,
+                                             job_ids: [resp.data.id]});
           }
           vm.isLoading = false;
         })
