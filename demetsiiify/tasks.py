@@ -41,7 +41,7 @@ def import_mets_job(mets_url):
         doc = mets.MetsDocument(tree, url=mets_url)
         if current_app.config['DUMP_METS']:
             xml_path = os.path.join(current_app.config['DUMP_METS'],
-                                    doc.primary_id + ".xml")
+                                    doc.primary_id.replace('/', '_') + ".xml")
             with open(xml_path, "wb") as fp:
                 fp.write(ET.tostring(tree, pretty_print=True))
         times = deque(maxlen=50)
