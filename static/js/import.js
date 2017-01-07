@@ -368,6 +368,12 @@ var app = new Vue({
               demetsiiify
             </a>
           </div>
+          <label class="nav-toggle" for="nav-toggle-state">
+            <span></span>
+            <span></span>
+            <span></span>
+          </label>
+          <input type="checkbox" class="is-hidden" id="nav-toggle-state" />
           <div class="nav-right nav-menu">
             <a class="nav-item" href="/recent">Recent Imports</a>
             <a class="nav-item" href="/api-docs">API</a>

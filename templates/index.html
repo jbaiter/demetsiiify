@@ -29,23 +29,20 @@
         <input type="checkbox" class="is-hidden" id="nav-toggle-state" />
 
         <div class="nav-right nav-menu">
+          <a class="nav-item" href="/recent">Recent Imports</a>
           <a class="nav-item" href="/api-docs">API</a>
           <a class="nav-item" href="/about">About</a>
         </div>
       </nav>
     </div>
     <div class="hero-body">
-      <div class="container">
-        <div class="columns">
-          <p class="column is-11 control">
-            <input class="input is-large" type="url" placeholder="Put a METS URL in here">
-          </p>
-          <p class="column">
-            <button class="button is-primary is-large iiif-btn">
-              <img src="[[ url_for('static', filename='img/iiif_128.png') ]]" alt="IIIF it!">
-            </button>
-          </p>
-        </div>
+      <div class="container has-text-centered">
+        <p class="control has-addons mets-control">
+          <input class="input is-large" type="url" placeholder="Put a METS URL in here">
+          <button class="button is-primary is-large iiif-btn">
+            <img src="[[ url_for('static', filename='img/iiif_128.png') ]]" alt="IIIF it!">
+          </button>
+        </p>
       </div>
     </div>
     <div class="hero-foot">
