@@ -79,26 +79,35 @@ def view_endpoint(manifest_id):
 
 @view.route('/')
 def index():
-    return render_template('index.html', latest=_get_latest(10))
+    return render_template('index.html')
 
 
-def _get_latest(num):
-    return list(reversed([
-        {'id': m.id,
-         'manifest': url_for('iiif.get_manifest', manif_id=m.id,
-                             _external=True),
-         'preview': m.manifest['sequences'][0]['canvases'][0]['thumbnail'],
-         'label': m.label,
-         'attribution': m.manifest['attribution'],
-         'attribution_logo': m.manifest['logo']}
-        for m in Manifest.get_latest(num)]))
+@view.route('/recent')
+def recent():
+    return render_template('recent.html')
 
 
 # API Endpoints
-@api.route('/api/latest')
-def api_get_latest():
-    num = int(request.args.get('num', '10'))
-    return jsonify(dict(latest=_get_latest(num)))
+@api.route('/api/recent')
+def api_get_recent_manifests():
+    page_num = int(request.args.get('page', '1'))
+    if page_num < 1:
+        page_num = 1
+    pagination = Manifest.query.paginate(
+        page=page_num, error_out=False,
+        per_page=current_app.config['ITEMS_PER_PAGE'])
+    return jsonify(dict(
+        next_page=pagination.next_num if pagination.has_next else None,
+        manifests=[
+            {'id': m.id,
+             'manifest': url_for('iiif.get_manifest', manif_id=m.id,
+                                 _external=True),
+             'preview': m.manifest['sequences'][0]['canvases'][0]['thumbnail'],
+             'label': m.label,
+             'metsurl': m.origin,
+             'attribution': m.manifest['attribution'],
+             'attribution_logo': m.manifest['logo']}
+            for m in pagination.items]))
 
 
 @api.route('/api/resolve/<identifier>')
@@ -145,7 +154,7 @@ def api_import():
     job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
     job.refresh()
     status_url = url_for('api.api_task_status', task_id=job.id,
-                            _external=True)
+                         _external=True)
     response = jsonify(_get_job_status(job.id))
     response.status_code = 202
     response.headers['Location'] = status_url

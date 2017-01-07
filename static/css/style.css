@@ -49,8 +49,12 @@ input.metsurl {
   display: none;
 }
 
-.iiif-btn {
-  min-width: 82px;
+.iiif-btn img {
+  min-width: 20px;
+  min-height: 20px !important;
+  max-height: 36px;
+  width: auto;
+  height: auto !important;
 }
 
 .metsurl img {
@@ -68,4 +72,47 @@ input.metsurl {
 
 .footer .content {
   color: lightgray;
+}
+
+pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.attribution-logo img {
+  max-width: 32px;
+}
+
+.card-footer-item img {
+  max-height: 24px;
+}
+
+.manifest-preview {
+  height: 200px;
+}
+
+.manifest-preview img {
+  max-height: 200px;
+  width: auto;
+}
+
+.card {
+  width: auto;
+}
+
+.card-footer-item.button {
+  height: auto;
+  border-radius: 0;
+}
+
+.recent-manifests {
+  margin-top: 2em;
+}
+
+.welcome-box {
+  margin-top: 1em;
+}
+
+.mets-control input {
+  flex: 1;
 }

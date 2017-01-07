@@ -11,6 +11,55 @@
 })([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
 
 
+Vue.component("WelcomeBox", {
+  template: `
+    <article class="message is-info welcome-box has-text-left">
+      <div class="message-header">
+        <p>Hi there!</p>
+        <button @click="onDismiss" class="delete"></button>
+      </div>
+      <div class="message-body content">
+        <p>
+          This application allows you to create fresh new
+          <a href="http://iiif.io">IIIF</a>
+          <a href="http://iiif.io/api/presentation/2.1/">manifests</a> from
+          your dusty old
+          <a href="http://www.loc.gov/standards/mets/">METS</a>/<a href="http://www.loc.gov/standards/mods/">MODS</a> files.
+          Why? Because XML is so 90ies and curly braces are prettier than pointed ones...<br>
+          Just kidding, having a IIIF manifests opens a lot of possibilities:
+        </p>
+        <ul>
+          <li>You can now create and share annotations on your digitized works
+              (they are stored on our server, but they can be viewed from anywhere)</li>
+          <li>Since IIIF is Linked Data all the way down, you get free permalinks
+              to all parts of the object</li>
+          <li>With Mirador, you can compare objects from multiple sources
+              side-by-side in the same window</li>
+        </ul>
+        <p>
+          The application is currently a <strong>work-in-progress</strong> and has only been
+          tested with METS/MODS files that follow the <a
+          href="http://dfg-viewer.de/profil-der-metadaten/">recommendations of
+          the German Research Foundation (DFG)</a>. If you want to give it a spin,
+          pick an object from the <a href="http://zvdd.de">Central Directory of
+          Digitized Prints</a> and put the URL to the METS in the input above.
+        </p>
+        <p>
+          Since the venerable <a href="http://dfg-viewer.de">DFG-Viewer</a>
+          is based on METS, you can also put a DFG-Viewer URL into the input box
+          and the application will extract the URL of the corresponding METS
+          document by itself.
+        </p>
+      </div>
+    </article>`,
+  methods: {
+    onDismiss: function() {
+      this.$emit('dismiss');
+    }
+  }
+});
+
+
 Vue.component("JobDisplay", {
   props: ['job'],
   data: function() {
@@ -230,22 +279,18 @@ Vue.component("MetsForm", {
                         @subscribe-to-notifications="onSubscribeToNotifications"
                         @dismiss-notification="onDismissNotification"/>
       <form @submit.prevent>
-        <div class="columns">
-          <p class="column is-11 control">
-            <input v-model="metsUrl" type="url" class="input is-large"
-                   @click="removeError" name="metsUrl" @invalid="invalidate"
-                   placeholder="Put a METS URL in here!"
-                   :class="{'is-danger': isDisabled}">
-            <span v-if="errorMessage" class="help is-danger">{{ errorMessage }}</span>
-          </p>
-          <p class="column">
-            <button @click="submitUrl" class="button is-primary is-large iiif-btn"
-                    type="submit" :disabled="isDisabled"
-                    :class="{'is-disabled': isDisabled, 'is-loading': isLoading}">
-              <img src="/static/img/iiif_128.png" alt="IIIF it!">
-            </button>
-          </p>
-        </div>
+        <p class="control has-addons mets-control">
+          <input v-model="metsUrl" type="url" class="input is-large"
+                  @click="removeError" name="metsUrl" @invalid="invalidate"
+                  placeholder="Put a METS (or DFG-Viewer) URL in here!"
+                  :class="{'is-danger': isDisabled}">
+          <button @click="submitUrl" class="button is-primary is-large iiif-btn"
+                  type="submit" :disabled="isDisabled"
+                  :class="{'is-disabled': isDisabled, 'is-loading': isLoading}">
+            <img src="/static/img/iiif_128.png" alt="IIIF it!">
+          </button>
+        </p>
+        <span v-if="errorMessage" class="help is-danger has-text-left">{{ errorMessage }}</span>
       </form>
       <ErrorDisplay v-if="!errorMessage && traceback" @dismiss="onDismissError"
                     :metsUrl="metsUrl" :traceback="traceback" />
@@ -311,7 +356,8 @@ var app = new Vue({
   data: {
     jobIds: [],  // to store the order the jobs were added in
     jobs: {},
-    streams: {}
+    streams: {},
+    showWelcome: !localStorage.getItem('hideWelcome')
   },
   template: `
     <section class="hero" :class="{'is-fullheight': jobIds.length === 0}">
@@ -323,14 +369,16 @@ var app = new Vue({
             </a>
           </div>
           <div class="nav-right nav-menu">
+            <a class="nav-item" href="/recent">Recent Imports</a>
             <a class="nav-item" href="/api-docs">API</a>
             <a class="nav-item" href="/about">About</a>
           </div>
         </nav>
       </div>
       <div class="hero-body">
-        <div class="container">
+        <div class="container has-text-centered">
           <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />
+          <WelcomeBox v-if="showWelcome" @dismiss="onWelcomeDismissed"/>
           <div class="jobs">
             <JobDisplay v-for="jobId in jobIds"
                         :job="jobs[jobId]"
@@ -349,6 +397,10 @@ var app = new Vue({
       </div>
     </section>`,
   methods: {
+    onWelcomeDismissed: function() {
+      localStorage.setItem('hideWelcome', true);
+      this.showWelcome = false;
+    },
     onJobCreated: function(job) {
       this.jobIds.push(job.id);
       this.$set(this.jobs, job.id, job);
