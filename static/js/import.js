@@ -25,12 +25,11 @@ Vue.component("WelcomeBox", {
           <a href="http://iiif.io/api/presentation/2.1/">manifests</a> from
           your dusty old
           <a href="http://www.loc.gov/standards/mets/">METS</a>/<a href="http://www.loc.gov/standards/mods/">MODS</a> files.
-          Why? Because XML is so 90ies and curly braces are prettier than pointed ones...<br>
-          Just kidding, having a IIIF manifests opens a lot of possibilities:
+          Having IIIF manifests opens up a lot of possibilities:
         </p>
         <ul>
           <li>You can now create and share annotations on your digitized works
-              (they are stored on our server, but they can be viewed from anywhere)</li>
+              (they are stored on our server, but they can be used from anywhere)</li>
           <li>Since IIIF is Linked Data all the way down, you get free permalinks
               to all parts of the object</li>
           <li>With Mirador, you can compare objects from multiple sources
