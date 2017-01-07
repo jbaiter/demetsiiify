@@ -224,7 +224,7 @@ Vue.component("ErrorDisplay", {
     };
   },
   template: `
-    <article class="message is-danger">
+    <article class="message is-danger has-text-left">
       <div class="message-header">
         <p><strong>Could not import METS</strong></p>
         <button @click="onDismiss" class="delete"></button>
