@@ -109,7 +109,7 @@ def import_mets_job(mets_url):
             redis.srem('notifications.{}.jobs'.format(recipient), job.id)
             redis.sadd('notifications.{}.manifests'.format(recipient),
                        manifest['@id'])
-            notify_email(recipient)
+            notify_email(recipient.decode('utf8'))
         redis.delete('recipients.{}'.format(job.id))
         return manifest['@id']
     except Exception as e:
