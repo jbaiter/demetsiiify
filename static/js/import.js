@@ -128,7 +128,7 @@ Vue.component("JobDisplay", {
     },
     viewerUrl: function() {
       if (this.job.result) {
-        var manifestId = this.job.result.split('/').splice(-2)[0];
+        var manifestId = this.job.result.replace(/.*?\/iiif\/(.*?)\/manifest/, '$1')
         return `/view/${manifestId}`;
       }
     }
