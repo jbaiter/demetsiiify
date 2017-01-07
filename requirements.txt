@@ -21,7 +21,6 @@ alembic
 
 # Miscallaneous
 rq  # Task queue
-rq-scheduler  # Periodic tasks
 validate_email  # To verify emails
 py3dns  # To verify emails via MX entries
 ipython  # for debugging on the repl
