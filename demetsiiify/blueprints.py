@@ -127,7 +127,8 @@ def api_get_recent_manifests():
     page_num = int(request.args.get('page', '1'))
     if page_num < 1:
         page_num = 1
-    pagination = Manifest.query.paginate(
+    query = Manifest.query.order_by(Manifest.surrogate_id.desc())
+    pagination = query.paginate(
         page=page_num, error_out=False,
         per_page=current_app.config['ITEMS_PER_PAGE'])
     return jsonify(dict(
