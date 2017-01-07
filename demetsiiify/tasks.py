@@ -140,4 +140,4 @@ def notify_email(recipient):
     with smtplib.SMTP(current_app.config['SMTP_SERVER']) as s:
         s.login(current_app.config['SMTP_USER'],
                 current_app.config['SMTP_PASSWORD'])
-        s.send_message(msg)
+        s.send_message(msg, to_addrs=[recipient])
