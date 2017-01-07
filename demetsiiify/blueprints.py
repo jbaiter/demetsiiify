@@ -327,11 +327,11 @@ def register_email_notification():
 
 
 # IIIF Endpoints
-@iiif.route('/iiif/collection/<collection_id>/<page_id>',
-            defaults={'collection_id': 'index', 'page_id': 'top'})
+@iiif.route('/iiif/collection', redirect_to='/iiif/collection/index/top')
+@iiif.route('/iiif/collection/<collection_id>/<page_id>')
 @auto.doc(groups=['iiif'])
 @cors('*')
-def get_collection(collection_id, page_id):
+def get_collection(collection_id='index', page_id='top'):
     """ Get the collection of all IIIF manifests on this server. """
     if collection_id != 'index':
         abort(404)
