@@ -1,8 +1,9 @@
 import functools
 import json
 import mimetypes
+import re
 import traceback
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 import lxml.etree as ET
 import requests
@@ -139,9 +140,22 @@ def _get_basic_info(mets_url):
     }
 
 
+def _extract_mets_from_dfgviewer(url):
+    url = unquote(url)
+    mets_url = re.findall(r'set\[mets\]=(http[^&]+)', url)
+    if not mets_url:
+        mets_url = re.findall(r'tx_dlf\[id\]=(http.+)', url)
+    if mets_url:
+        return mets_url[0]
+    else:
+        return None
+
+
 @api.route('/api/import', methods=['POST'])
 def api_import():
     mets_url = request.json.get('url')
+    if re.match(r'https?://dfg-viewer.de/show/.*?', mets_url):
+        mets_url = _extract_mets_from_dfgviewer(mets_url)
     resp = None
     try:
         resp = requests.head(mets_url)
