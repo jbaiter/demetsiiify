@@ -33,18 +33,18 @@ logger = logging.getLogger(__name__)
 
 def make_label(mets_meta):
     label = mets_meta['title'][0]
-    if 'creator' in mets_meta:
+    if mets_meta.get('creator'):
         label = "{creator}: {label}".format(
             creator="/".join(mets_meta['creator']),
             label=label)
-    if 'pub_place' in mets_meta and 'pub_date' in mets_meta:
+    if mets_meta.get('pub_place') and mets_meta.get('pub_date'):
         label = "{label} ({pub_place}, {pub_date})".format(
             label=label, pub_place=mets_meta['pub_place'],
             pub_date=mets_meta['pub_date'])
-    elif 'pub_date' in mets_meta:
+    elif mets_meta.get('pub_date'):
         label = "{label} ({pub_date})".format(
             label=label, pub_date=mets_meta['pub_date'])
-    elif 'pub_place' in mets_meta:
+    elif mets_meta.get('pub_place'):
         label = "{label} ({pub_place})".format(
             label=label, pub_place=mets_meta['pub_place'])
     return label
