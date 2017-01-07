@@ -283,16 +283,27 @@ def sse_stream(task_id):
         abort(404)
 
     def gen(redis):
-        channel_name = '__keyspace@0__:rq:job:{}'.format(task_id)
+        # NOTE: This is wasteful, yes, but in order to get updates when
+        #  the queue position changes, we have to check at every update of
+        #  every other job
+        channel_name = '__keyspace@0__:rq:job:*'
         pubsub = redis.pubsub()
-        pubsub.subscribe(channel_name)
-        last_evt = None
+        pubsub.psubscribe(channel_name)
+        last_status = None
+        last_id = None
+
         for msg in pubsub.listen():
+            # To learn about queue position changes, watch for changes
+            # in the currently active
+            cur_id = msg['channel'].decode('utf8').split(':')[-1]
+            if cur_id == last_id and last_status['status'] != 'started':
+                continue
+            last_id = cur_id
             status = _get_job_status(task_id)
-            evt = ServerSentEvent(status).encode()
-            if evt != last_evt:
-                yield evt
-            last_evt = evt
+            if status == last_status:
+                continue
+            yield ServerSentEvent(status).encode()
+            last_status = status
     return current_app.response_class(gen(redis), mimetype="text/event-stream")
 
 
