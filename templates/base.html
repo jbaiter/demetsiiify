@@ -23,9 +23,21 @@
           demetsiiify
         </a>
       </div>
+
+      <!-- This is a a hacky way to get the navbar toggle on mobile without
+            using JavaScript: Make the display dependent on the state of
+            the hidden checkbox. Clicking the label also changes the state
+            of the checkbox, allowing this trick to work -->
+      <label class="nav-toggle" for="nav-toggle-state">
+        <span></span>
+        <span></span>
+        <span></span>
+      </label>
+      <input type="checkbox" class="is-hidden" id="nav-toggle-state" />
+
       <div class="nav-right nav-menu">
         <a class="nav-item" href="/recent">Recent Imports</a>
-        <a class="nav-item" href="/api-docs">API</a>
+        <a class="nav-item" href="/apidocs">API</a>
         <a class="nav-item" href="/about">About</a>
       </div>
     </nav>

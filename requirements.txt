@@ -2,6 +2,7 @@
 Flask
 Flask-SQLAlchemy
 Flask-Script
+flask-autodoc
 gevent
 gunicorn
 

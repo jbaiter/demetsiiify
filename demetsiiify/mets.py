@@ -143,6 +143,8 @@ class MetsDocument:
             # multi-volume work
             title_elems = [self._findall(
                 ".//mods:relatedItem[@type='host']/mods:titleInfo")[0]]
+        # TODO: Use information from table of contents to find out about
+        #       titles of multi-volume work
         titles = [self._parse_title(e) for e in title_elems]
         part_number = self._findtext(".//mods:part/mods:detail/mods:number")
         if part_number:

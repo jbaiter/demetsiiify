@@ -116,3 +116,43 @@ pre {
 .mets-control input {
   flex: 1;
 }
+
+.faq dt {
+  font-weight: bold;
+}
+
+.faq dd {
+  margin-left: 1em;
+  margin-bottom: 1em;
+}
+
+.faq section {
+  margin-top: 2em;
+}
+
+.container:not(.recent-manifests) {
+  max-width: 800px;
+}
+
+.api-docs p:not(:last-child) {
+  margin-bottom: 0.25em;
+}
+
+.api-docs .mapping {
+  margin-bottom: 1em;
+}
+
+.api-docs .rule>h3 {
+  display: inline-block;
+  margin-bottom: 0.25em;
+}
+
+.api-docs .methods {
+  display: inline-block;
+  margin-left: 1em;
+}
+
+.methods tt:not(:last-child):after, .methods a:not(:last-child):after {
+  content: ',';
+}
+

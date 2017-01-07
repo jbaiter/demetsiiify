@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}demetsiiify API{% endblock %}
+
+{% macro apidocs(docs, title) -%}
+  <section>
+    <h2>[[ title ]]</h2>
+    {% for doc in docs %}
+    <div class="mapping">
+        <a id="rule-[[doc.rule|urlencode]]" class="rule">
+          <h3>[[doc.rule|escape]]</h3>
+        </a>
+        <p class="methods">
+            {% for method in doc.methods -%}
+                {% if method == 'GET' and doc.args == ['None'] %}
+                  <a href="[[doc.rule]]" class="getmethod">
+                    <tt>[[method]]</tt>
+                  </a>
+                {% else %}
+                  <tt>[[method]]</tt>
+                {% endif %}
+            {% endfor %}
+        </p>
+        {% if doc.args != ['None'] %}
+        <ul class="arguments">
+            {% for arg in doc.args %}
+            <li>
+                <span class="argument">[[arg]]</span>
+                <tt class="default">[[doc.defaults[arg]]]</tt>
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        <p class="docstring">[[doc.docstring|urlize|nl2br]]</p>
+    </div>
+    {% endfor %}
+  </section>
+{%- endmacro %}
+
+{% block content %}
+<div class="container content api-docs">
+  <h1>API Documentation</h1>
+  [[ apidocs(api, 'General API') ]]
+  [[ apidocs(iiif, 'IIIF Endpoints') ]]
+</div>
+{% endblock %}

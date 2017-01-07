@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}About demetsiiify{% endblock %}
+
+{% block content %}
+<div class="container content faq">
+  <section>
+    <h1>About demetsiiify</h1>
+    <p>
+      This application allows you to create fresh new
+      <a href="http://iiif.io">IIIF</a>
+      <a href="http://iiif.io/api/presentation/2.1/">manifests</a> from
+      your dusty old
+      <a href="http://www.loc.gov/standards/mets/">METS</a>/<a href="http://www.loc.gov/standards/mods/">MODS</a> files.
+      Why? Because XML is so 90ies and curly braces are prettier than pointed ones...<br>
+      Just kidding, having a IIIF manifests opens a lot of possibilities:
+    </p>
+    <ul>
+      <li>You can now create and share annotations on your digitized works
+          (they are stored on our server, but they can be viewed from anywhere)</li>
+      <li>Since IIIF is Linked Data all the way down, you get free permalinks
+          to all parts of the object</li>
+      <li>With Mirador, you can compare objects from multiple sources
+          side-by-side in the same window</li>
+    </ul>
+    <p>
+      The application is currently a <strong>work-in-progress</strong> and has only been
+      tested with METS/MODS files that follow the <a
+      href="http://dfg-viewer.de/profil-der-metadaten/">recommendations of
+      the German Research Foundation (DFG)</a>. If you want to give it a spin,
+      pick an object from the <a href="http://zvdd.de">Central Directory of
+      Digitized Prints</a> and submit the URL to the METS on the front page.
+    </p>
+    <p>
+      Since the venerable <a href="http://dfg-viewer.de">DFG-Viewer</a>
+      is based on METS, you can also put a DFG-Viewer URL into the input box
+      and the application will extract the URL of the corresponding METS
+      document by itself.
+    </p>
+  </section>
+  <section>
+    <h1>FAQ</h1>
+    <dl>
+      <dt>How does this work? Are you hosting all the images yourself?</dt>
+      <dd>
+        <strong>No.</strong> <em>demetsiiify</em> merely <strong>redirects</strong>
+        to the original image resources on the libraries' servers. The only
+        information it stores are the generated IIIF manifests and information
+        (dimensions, format) about the available images in each manifest.
+        Under the hood this works by offering <a href="TODO">Level 0</a>
+        <tt>info.json</tt> files for each page that lists the available sizes
+        for a given page. If the client then makes a request to the IIIF endpoint
+        corresponding to that size, it will be redirected to the actual image
+        on the library's servers.
+      </dd>
+      <dt>Why does it take so long to generate a manifest?</dt>
+      <dd>
+        This is due to the fact that the <a href="">IIIF Presentation API</a>
+        mandates that the dimension (in pixels) of each <em>canvas</em> (i.e.
+        a single page) be known in advance. Unfortunately this information is
+        not contained in the METS document, so we have to grab every single
+        referenced image from the METS to obtain its dimensions, which can
+        take a while. This information is cached in the database, so when
+        you re-submit the METS (e.g. because some metadata has changed),
+        it will be much quicker.
+      </dd>
+      <dt>Why are you hammering my library's servers?</dt>
+      <dd>
+        See the above question. If you have an API that allows for the querying
+        of the image dimensions without grabbing the actual image,
+        <a href="mailto:johannes.baiter@gmail.com">get in touch</a>, maybe
+        we can do something about it.
+      </dd>
+      <dt>Your metadata is all wrong and incomplete!</dt>
+      <dd>
+        I tried to use most of the information avaible from the METS files.
+        If I made a mistake in that process, please open an issue on GitHub.
+        Unfortunately the whole metadata topic is notoriously tricky to get
+        right, with a number of differing views on what constitutes "correct"
+        and "complete" metadata. I'm with <a href="TODO">Rob Sanderson</a>
+        on that topic:
+        <blockquote class="twitter-tweet" data-lang="en">
+          <p lang="en" dir="ltr">
+            You can have Linked Open Data that is:<br>
+            * Usable<br>
+            * Complete<br>
+            *Accurate<br><br>
+            Pick one.<br><br>
+            And pick Usable.
+          </p>
+          &mdash; Rob Sanderson (@azaroth42)
+          <a href="https://twitter.com/azaroth42/status/804132088450465792">December 1, 2016</a>
+        </blockquote>
+      </dd>
+      <dt>I'm from a library, can we use this for our production services?</dt>
+      <dd>
+        Absolutely! If you're fine with the manifests being hosted elsewhere,
+        you can just use the manifests on this server. If you want to self-host
+        the application, it is available at GitHub under an AGPL license. If you
+        want different licensing terms or proprietary customiations, please get
+        in touch and I'm sure we can work something out.
+      </dd>
+    </dl>
+</div>
+{% endblock %}
+
+{% block footer %}
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+{% endblock %}

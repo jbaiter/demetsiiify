@@ -9,6 +9,8 @@ import lxml.etree as ET
 import requests
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
+from flask_autodoc import Autodoc
+from jinja2 import evalcontextfilter, Markup, escape
 from validate_email import validate_email
 
 from . import mets
@@ -16,10 +18,23 @@ from .models import Identifier, Manifest, IIIFImage
 from .tasks import queue, failed_queue, get_redis, import_mets_job
 from .iiif import make_manifest_collection, make_label
 
+PARAGRAPH_RE = re.compile(r'(?:\r\n|\r|\n){2,}')
 
 view = Blueprint('view', __name__)
 api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
+
+auto = Autodoc()
+
+
+@view.app_template_filter()
+@evalcontextfilter
+def nl2br(eval_ctx, value):
+    result = u'\n\n'.join(u'<p>%s</p>' % p
+                          for p in PARAGRAPH_RE.split(escape(value)))
+    if eval_ctx.autoescape:
+        result = Markup(result)
+    return result
 
 
 @api.errorhandler(Exception)
@@ -88,9 +103,26 @@ def recent():
     return render_template('recent.html')
 
 
+@view.route('/about')
+def about():
+    return render_template('about.html')
+
+
+@view.route('/apidocs')
+def apidocs():
+    return render_template('apidocs.html', api=auto.generate('api'),
+                           iiif=auto.generate('iiif'))
+
+
 # API Endpoints
 @api.route('/api/recent')
+@auto.doc(groups=['api'])
 def api_get_recent_manifests():
+    """ Get list of recently imported manifests.
+
+    Takes a single request parameter `page_num` to specify the page to
+    obtain.
+    """
     page_num = int(request.args.get('page', '1'))
     if page_num < 1:
         page_num = 1
@@ -112,7 +144,13 @@ def api_get_recent_manifests():
 
 
 @api.route('/api/resolve/<identifier>')
+@auto.doc(groups=['api'])
 def api_resolve(identifier):
+    """ Resolve identifier to IIIF manifest.
+
+    Redirects to the corresponding manifest if resolving was successful,
+    otherwise returns 404.
+    """
     manifest_id = Identifier.resolve(identifier)
     if manifest_id is None:
         abort(404)
@@ -152,7 +190,18 @@ def _extract_mets_from_dfgviewer(url):
 
 
 @api.route('/api/import', methods=['POST'])
+@auto.doc(groups=['api'])
 def api_import():
+    """ Start the import process for a METS document.
+
+    The request payload must be a JSON object with a single `url` key that
+    contains the URL of the METS document to be imported.
+
+    Instead of a METS URL, you can also specify the URL of a DFG-Viewer
+    instance.
+
+    Will return the job status as a JSON document.
+    """
     mets_url = request.json.get('url')
     if re.match(r'https?://dfg-viewer.de/show/.*?', mets_url):
         mets_url = _extract_mets_from_dfgviewer(mets_url)
@@ -198,13 +247,20 @@ def _get_job_status(job):
 
 
 @api.route('/api/tasks', methods=['GET'])
+@auto.doc(groups=['api'])
 def api_list_tasks():
+    """ List currently enqueued import jobs.
+
+    Does not list currently executing jobs!
+    """
     return jsonify(
         {'tasks': [_get_job_status(job_id) for job_id in queue.job_ids]})
 
 
 @api.route('/api/tasks/<task_id>', methods=['GET'])
+@auto.doc(groups=['api'])
 def api_task_status(task_id):
+    """ Obtain status for a single job. """
     status = _get_job_status(task_id)
     if status:
         return jsonify(status)
@@ -213,7 +269,12 @@ def api_task_status(task_id):
 
 
 @api.route('/api/tasks/<task_id>/stream')
+@auto.doc(groups=['api'])
 def sse_stream(task_id):
+    """ Obtain a Server-Sent Event (SSE) stream for a given job.
+
+    The stream will deliver all updates to the status.
+    """
     redis = get_redis()
     job = queue.fetch_job(task_id)
     if job is None:
@@ -253,9 +314,12 @@ def register_email_notification():
 
 
 # IIIF Endpoints
-@iiif.route('/iiif/collection/<collection_id>/<page_id>')
+@iiif.route('/iiif/collection/<collection_id>/<page_id>',
+            defaults={'collection_id': 'index', 'page_id': 'top'})
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_collection(collection_id, page_id):
+    """ Get the collection of all IIIF manifests on this server. """
     if collection_id != 'index':
         abort(404)
     if page_id == 'top':
@@ -273,8 +337,10 @@ def get_collection(collection_id, page_id):
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')
 @iiif.route('/iiif/<path:manif_id>/manifest')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_manifest(manif_id):
+    """ Obtain a single manifest. """
     manifest = Manifest.get(manif_id)
     if manifest is None:
         abort(404)
@@ -284,8 +350,10 @@ def get_manifest(manif_id):
 
 @iiif.route('/iiif/<path:manif_id>/sequence/<sequence_id>.json')
 @iiif.route('/iiif/<path:manif_id>/sequence/<sequence_id>')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_sequence(manif_id, sequence_id):
+    """ Obtain the given sequence from a manifest. """
     sequence = Manifest.get_sequence(manif_id, sequence_id)
     if sequence is None:
         abort(404)
@@ -295,8 +363,10 @@ def get_sequence(manif_id, sequence_id):
 
 @iiif.route('/iiif/<path:manif_id>/canvas/<canvas_id>.json')
 @iiif.route('/iiif/<path:manif_id>/canvas/<canvas_id>')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_canvas(manif_id, canvas_id):
+    """ Obtain the given canvas from a manifest. """
     canvas = Manifest.get_canvas(manif_id, canvas_id)
     if canvas is None:
         abort(404)
@@ -306,8 +376,10 @@ def get_canvas(manif_id, canvas_id):
 
 @iiif.route('/iiif/<path:manif_id>/annotation/<anno_id>.json')
 @iiif.route('/iiif/<path:manif_id>/annotation/<anno_id>')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_image_annotation(manif_id, anno_id):
+    """ Obtain the given image annotation from a manifest. """
     anno = Manifest.get_image_annotation(manif_id, anno_id)
     if anno is None:
         abort(404)
@@ -317,8 +389,10 @@ def get_image_annotation(manif_id, anno_id):
 
 @iiif.route('/iiif/<path:manif_id>/range/<range_id>.json')
 @iiif.route('/iiif/<path:manif_id>/range/<range_id>')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_range(manif_id, range_id):
+    """ Obtain the given range from a manifest. """
     range_ = Manifest.get_range(manif_id, range_id)
     if range_ is None:
         abort(404)
@@ -327,8 +401,10 @@ def get_range(manif_id, range_id):
 
 
 @iiif.route('/iiif/image/<image_id>/info.json')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_image_info(image_id):
+    """ Obtain the info.json for the given image. """
     img = IIIFImage.get(image_id)
     if img is None:
         abort(404)
@@ -338,8 +414,11 @@ def get_image_info(image_id):
 
 @iiif.route(
     '/iiif/image/<image_id>/<region>/<size>/<rotation>/<quality>.<format>')
+@auto.doc(groups=['iiif'])
 @cors('*')
 def get_image(image_id, region, size, rotation, quality, format):
+    """ Obtain a redirect to the image resource for the given IIIF Image API
+        request. """
     not_supported = (region != 'full'
                      or rotation != '0'
                      or quality not in ('default', 'native'))
