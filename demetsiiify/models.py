@@ -269,3 +269,23 @@ class Annotation(db.Model):
                 *[Annotation.date.between(start, end)
                   for start, end in date_ranges]))
         return query
+
+
+collection_manifest_table = db.Table(
+    'collection_manifest',
+    db.Column('collection_id', db.Integer,
+              db.ForeignKey('collection.surrogate_id')),
+    db.Column('manifest_id', db.Integer,
+              db.ForeignKey('manifest.surrogate_id')))
+
+
+class Collection(db.Model):
+    surrogate_id = db.Column(db.Integer, primary_key=True)
+    id = db.Column(db.String, unique=True)
+    label = db.Column(db.String)
+    manifests = db.relationship(
+        'Manifest', secondary=collection_manifest_table)
+    parent_collection_id = db.Column(
+        db.String, db.ForeignKey('collection.id'))
+    child_collections = db.relationship(
+        'Collection', backref='parent_collection', lazy='dynamic')
