@@ -1,4 +1,4 @@
-"""empty message
+""" Add collections table
 
 Revision ID: 4502e3e98b84
 Revises: 37043decf526
@@ -23,7 +23,7 @@ def upgrade():
         sa.Column('id', sa.String(), nullable=True),
         sa.Column('label', sa.String(), nullable=True),
         sa.Column('parent_collection_id', sa.String(), nullable=True),
-        sa.ForeignKeyConstraint(['parent_collection_id'], ['collection.id'], ),
+        sa.ForeignKeyConstraint(['parent_collection_id'], ['collection.id']),
         sa.PrimaryKeyConstraint('surrogate_id'),
         sa.UniqueConstraint('id'))
 
@@ -33,7 +33,7 @@ def upgrade():
         sa.Column('manifest_id', sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(
             ['collection_id'],
-            ['collection.surrogate_id'])
+            ['collection.surrogate_id']),
         sa.ForeignKeyConstraint(
             ['manifest_id'],
             ['manifest.surrogate_id']))
