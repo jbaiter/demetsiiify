@@ -284,8 +284,10 @@ class Collection(db.Model):
     id = db.Column(db.String, unique=True)
     label = db.Column(db.String)
     manifests = db.relationship(
-        'Manifest', secondary=collection_manifest_table)
+        'Manifest', secondary=collection_manifest_table,
+        backref=db.backref('collections', lazy='dynamic'))
     parent_collection_id = db.Column(
         db.String, db.ForeignKey('collection.id'))
-    child_collections = db.relationship(
-        'Collection', backref='parent_collection', lazy='dynamic')
+    parent_collection = db.relationship(
+        'Collection', backref=db.backref('child_collections', lazy='dynamic'),
+        remote_side='Collection.id')
