@@ -8,7 +8,7 @@ from .extensions import db
 
 class Identifier(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String, unique=True)
+    id = db.Column(db.String, unique=True, nullable=False)
     type = db.Column(db.String)
     manifest_id = db.Column(db.String, db.ForeignKey('manifest.id'),
                             nullable=False)
@@ -22,8 +22,7 @@ class Identifier(db.Model):
     def save(cls, *identifiers):
         base_query = pg.insert(cls).returning(Identifier.id)
         return db.session.execute(
-            base_query.on_conflict_do_nothing(
-                index_elements=[Identifier.id]),
+            base_query.on_conflict_do_nothing(),
             [dict(id=i.id, type=i.type, manifest_id=i.manifest_id)
              for i in identifiers])
 
@@ -36,12 +35,12 @@ class Identifier(db.Model):
 
 class Manifest(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String, unique=True)
+    id = db.Column(db.String, unique=True, nullable=False)
     identifiers = db.relationship('Identifier', backref='manifest',
                                   lazy='dynamic')
-    origin = db.Column(db.String, unique=True)
-    manifest = db.Column(pg.JSONB)
-    label = db.Column(db.String)
+    origin = db.Column(db.String, unique=True, nullable=False)
+    manifest = db.Column(pg.JSONB, nullable=False)
+    label = db.Column(db.String, nullable=False)
 
     def __init__(self, origin, manifest, label=None, id=None):
         self.id = id or shortuuid.uuid()
@@ -54,7 +53,7 @@ class Manifest(db.Model):
         base_query = pg.insert(cls).returning(Manifest.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
-                index_elements=[Manifest.origin],
+                index_elements=[Manifest.id],
                 set_=dict(manifest=base_query.excluded.manifest)),
             [dict(id=m.id, origin=m.origin, label=m.label,
                   manifest=m.manifest) for m in manifests])
@@ -121,8 +120,8 @@ class Manifest(db.Model):
 
 class IIIFImage(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String, unique=True)
-    info = db.Column(pg.JSONB)
+    id = db.Column(db.String, unique=True, nullable=False)
+    info = db.Column(pg.JSONB, nullable=False)
     images = db.relationship('Image', backref='iiif_image', lazy='dynamic')
 
     def __init__(self, info, id=None):
@@ -174,11 +173,12 @@ class IIIFImage(db.Model):
 
 class Image(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    url = db.Column(db.String, unique=True)
-    width = db.Column(db.Integer)
-    height = db.Column(db.Integer)
-    format = db.Column(db.Text)
-    iiif_id = db.Column(db.String(22), db.ForeignKey('iiif_image.id'))
+    url = db.Column(db.String, unique=True, nullable=False)
+    width = db.Column(db.Integer, nullable=False)
+    height = db.Column(db.Integer, nullable=False)
+    format = db.Column(db.Text, nullable=False)
+    iiif_id = db.Column(db.String(22), db.ForeignKey('iiif_image.id'),
+                        nullable=True)
 
     def __init__(self, url, width, height, format, iiif_id=None):
         self.url = url
@@ -212,11 +212,11 @@ class Image(db.Model):
 
 class Annotation(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String, unique=True)
-    target = db.Column(db.String)
-    motivation = db.Column(db.String)
+    id = db.Column(db.String, unique=True, nullable=False)
+    target = db.Column(db.String, nullable=False)
+    motivation = db.Column(db.String, nullable=False)
     date = db.Column(db.DateTime)
-    annotation = db.Column(pg.JSONB)
+    annotation = db.Column(pg.JSONB, nullable=False)
 
     def __init__(self, annotation):
         self.id = annotation['@id'].split('/')[-1]
@@ -285,7 +285,8 @@ class Collection(db.Model):
     label = db.Column(db.String)
     manifests = db.relationship(
         'Manifest', secondary=collection_manifest_table,
-        backref=db.backref('collections', lazy='dynamic'))
+        backref=db.backref('collections', lazy='dynamic'),
+        lazy='dynamic')
     parent_collection_id = db.Column(
         db.String, db.ForeignKey('collection.id'))
     parent_collection = db.relationship(
