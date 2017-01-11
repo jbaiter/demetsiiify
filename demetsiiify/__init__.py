@@ -2,7 +2,7 @@ import os
 
 from flask import Flask, current_app
 from redis import Redis
-from rq import Connection, Queue, Worker, get_failed_queue
+from rq import Connection, Queue, Worker
 
 from .extensions import db
 
@@ -61,11 +61,9 @@ def make_redis():
     return redis
 
 
-def make_queues(redis):
+def make_queues(redis, *queue_names):
     with Connection(redis):
-        return (Queue('tasks', default_timeout=60*60),
-                Queue('notifications'),
-                get_failed_queue())
+        return [Queue(name, default_timeout=60*60) for name in queue_names]
 
 
 def _exception_handler(job, exc_type, exc_value, traceback):
@@ -80,10 +78,9 @@ def _exception_handler(job, exc_type, exc_value, traceback):
     job.save()
 
 
-def make_worker(redis):
+def make_worker(redis, *queue_names):
     with Connection(redis):
-        queues = [Queue('tasks', default_timeout=60*60),
-                  Queue('notifications')]
+        queues = make_queues(redis, *queue_names)
         worker = Worker(queues)
         worker.push_exc_handler(_exception_handler)
         return worker

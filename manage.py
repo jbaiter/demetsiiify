@@ -24,7 +24,14 @@ manager.add_command('db', MigrateCommand)
 @manager.command
 def worker():
     redis = make_redis()
-    worker = make_worker(redis)
+    worker = make_worker(redis, 'tasks')
+    worker.work()
+
+
+@manager.command
+def oai_worker():
+    redis = make_redis()
+    worker = make_worker(redis, 'oai_imports')
     worker.work()
 
 

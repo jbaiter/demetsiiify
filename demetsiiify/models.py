@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import shortuuid
+from flask import current_app, url_for
 from sqlalchemy.dialects import postgresql as pg
 
 from .extensions import db
@@ -64,7 +65,20 @@ class Manifest(db.Model):
 
     @classmethod
     def get(cls, id):
-        return cls.query.filter_by(id=id).first()
+        manifest = cls.query.filter_by(id=id).first()
+        collections = [
+            ('index',
+            "All manifests available at {}".format(
+                current_app.config['SERVER_NAME']))]
+        collections.extend([
+            (c.id, c.label)
+            for c in manifest.collections.options(db.load_only('id')).all()])
+        manifest.manifest['within'] = [
+            {'@id': url_for('iiif.get_collection', collection_id=cid,
+                            page_id='top', _external=True),
+             'label': clabel,
+             '@type': 'sc:Collection'} for cid, clabel in collections]
+        return manifest
 
     @classmethod
     def by_origin(cls, origin):
@@ -292,3 +306,18 @@ class Collection(db.Model):
     parent_collection = db.relationship(
         'Collection', backref=db.backref('child_collections', lazy='dynamic'),
         remote_side='Collection.id')
+
+    def __init__(self, identifier, name):
+        self.label = name
+        self.id = identifier
+
+    @classmethod
+    def save(cls, *collections):
+        base_query = pg.insert(cls).returning(Collection.id)
+        return db.session.execute(
+            base_query.on_conflict_do_nothing(),
+            [dict(id=c.id, label=c.label) for c in collections])
+
+    @classmethod
+    def get(cls, id):
+        return cls.query.filter_by(id=id).first()

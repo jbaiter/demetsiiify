@@ -10,6 +10,7 @@ from PIL import Image
 from requests.packages.urllib3 import Retry
 
 from . import models
+from .iiif import make_label
 
 NAMESPACES = {
     'mets': 'http://www.loc.gov/METS/',
@@ -323,7 +324,8 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
         resp = None
     if not resp:
         raise MetsImportError(
-            "Could not get image from {}".format(location),
+            "Could not get image from {}, error_code was {}"
+            .format(location, resp.status_code),
             {'location': location,
              'mimetytpe': mimetype})
     # We cannot trust the mimetype from the METS, sometimes it lies about
@@ -342,3 +344,23 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
             "sent corrupt data.".format(location),
             {'location': location,
              'mimetype': server_mime}) from exc
+
+
+def get_basic_info(mets_url):
+    tree = etree.parse(mets_url)
+    doc = MetsDocument(tree, url=mets_url)
+    doc.read_metadata()
+    thumb_urls = doc._xpath(
+        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
+    if not thumb_urls:
+        thumb_urls = doc._xpath(
+            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
+    return {
+        'metsurl': mets_url,
+        'label': make_label(doc.metadata),
+        'thumbnail': thumb_urls[0] if thumb_urls else None,
+        'attribution': {
+            'logo': doc.metadata['logo'],
+            'owner': doc.metadata['attribution']
+        }
+    }

@@ -5,19 +5,19 @@ import re
 import traceback
 from urllib.parse import urlparse, unquote
 
-import lxml.etree as ET
 import requests
 import shortuuid
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, render_template, request, url_for)
 from flask_autodoc import Autodoc
 from jinja2 import evalcontextfilter, Markup, escape
+from rq import Connection, get_failed_queue
 from validate_email import validate_email
 
 from . import mets, db
-from .models import Identifier, Manifest, IIIFImage, Annotation
-from .tasks import queue, failed_queue, get_redis, import_mets_job
-from .iiif import make_manifest_collection, make_label
+from .models import Identifier, Manifest, IIIFImage, Annotation, Collection
+from .tasks import queue, get_redis, import_mets_job
+from .iiif import make_manifest_collection
 
 PARAGRAPH_RE = re.compile(r'(?:\r\n|\r|\n){2,}')
 
@@ -160,26 +160,6 @@ def api_resolve(identifier):
         return redirect(url_for('iiif.get_manifest', manif_id=manifest_id))
 
 
-def _get_basic_info(mets_url):
-    tree = ET.parse(mets_url)
-    doc = mets.MetsDocument(tree, url=mets_url)
-    doc.read_metadata()
-    thumb_urls = doc._xpath(
-        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
-    if not thumb_urls:
-        thumb_urls = doc._xpath(
-            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
-    return {
-        'metsurl': mets_url,
-        'label': make_label(doc.metadata),
-        'thumbnail': thumb_urls[0] if thumb_urls else None,
-        'attribution': {
-            'logo': doc.metadata['logo'],
-            'owner': doc.metadata['attribution']
-        }
-    }
-
-
 def _extract_mets_from_dfgviewer(url):
     url = unquote(url)
     mets_url = re.findall(r'set\[mets\]=(http[^&]+)', url)
@@ -215,7 +195,7 @@ def api_import():
     if not resp:
         return jsonify({
             'message': 'There is no METS available at the given URL.'}), 400
-    job_meta = _get_basic_info(mets_url)
+    job_meta = mets.get_basic_info(mets_url)
     job = queue.enqueue(import_mets_job, mets_url, meta=job_meta)
     job.refresh()
     status_url = url_for('api.api_task_status', task_id=job.id,
@@ -230,6 +210,8 @@ def _get_job_status(job):
     if isinstance(job, str):
         job = queue.fetch_job(job)
         if job is None:
+            with Connection(get_redis()):
+                failed_queue = get_failed_queue()
             job = failed_queue.fetch_job(job)
         if job is None:
             return None
@@ -280,6 +262,8 @@ def sse_stream(task_id):
     redis = get_redis()
     job = queue.fetch_job(task_id)
     if job is None:
+        with Connection(redis):
+            failed_queue = get_failed_queue()
         job = failed_queue.fetch_job(task_id)
     if job is None:
         abort(404)
@@ -298,7 +282,9 @@ def sse_stream(task_id):
             # To learn about queue position changes, watch for changes
             # in the currently active
             cur_id = msg['channel'].decode('utf8').split(':')[-1]
-            if cur_id == last_id and last_status['status'] != 'started':
+            skip = (cur_id == last_id and
+                    last_status and last_status['status'] != 'started')
+            if skip:
                 continue
             last_id = cur_id
             status = _get_job_status(task_id)
@@ -328,22 +314,31 @@ def register_email_notification():
 
 # IIIF Endpoints
 @iiif.route('/iiif/collection', redirect_to='/iiif/collection/index/top')
+@iiif.route('/iiif/collection/<collection_id>',
+            redirect_to='/iiif/collection/<collection_id>/top')
 @iiif.route('/iiif/collection/<collection_id>/<page_id>')
 @auto.doc(groups=['iiif'])
 @cors('*')
 def get_collection(collection_id='index', page_id='top'):
     """ Get the collection of all IIIF manifests on this server. """
-    if collection_id != 'index':
-        abort(404)
     if page_id == 'top':
         page_num = None
     else:
         page_num = int(page_id[1:])
-    pagination = Manifest.query.paginate(
-        page=page_num,
-        per_page=current_app.config['ITEMS_PER_PAGE'])
-    label = "All manifests available at {}".format(
-        current_app.config['SERVER_NAME'])
+    if collection_id == 'index':
+        pagination = Manifest.query.paginate(
+            page=page_num,
+            per_page=current_app.config['ITEMS_PER_PAGE'])
+        label = "All manifests available at {}".format(
+            current_app.config['SERVER_NAME'])
+    else:
+        collection = Collection.get(collection_id)
+        if not collection:
+            abort(404)
+        pagination = collection.manifests.paginate(
+            page=page_num,
+            per_page=current_app.config['ITEMS_PER_PAGE'])
+        label = collection.label
     return jsonify(make_manifest_collection(
         pagination, label, collection_id, page_num))
 

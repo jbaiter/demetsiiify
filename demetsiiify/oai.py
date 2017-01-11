@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from urllib.parse import urlencode
 
@@ -131,7 +130,7 @@ class OaiRepository:
             params = urlencode({
                 'verb': 'GetRecord',
                 'identifier': identifier,
-                'metadataFormat': metadata_format})
+                'metadataPrefix': metadata_format})
             url = "{}?{}".format(self.endpoint, params)
             yield (url, set_id) if include_sets else url
 
