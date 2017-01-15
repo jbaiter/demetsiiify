@@ -329,7 +329,7 @@ class OaiRepository(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     endpoint = db.Column(db.String, unique=True, nullable=False)
     name = db.Column(db.String, nullable=False)
-    last_update = db.DateTime()
+    last_update = db.Column(db.DateTime)
 
     def __init__(self, endpoint, name):
         self.endpoint = endpoint
