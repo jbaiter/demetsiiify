@@ -323,3 +323,14 @@ class Collection(db.Model):
     @classmethod
     def get(cls, id):
         return cls.query.filter_by(id=id).first()
+
+
+class OaiRepository(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    endpoint = db.Column(db.String, unique=True, nullable=False)
+    name = db.Column(db.String, nullable=False)
+    last_update = db.DateTime()
+
+    def __init__(self, endpoint, name):
+        self.endpoint = endpoint
+        self.name = name
