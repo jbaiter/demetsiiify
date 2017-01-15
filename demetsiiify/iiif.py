@@ -146,7 +146,8 @@ def make_manifest(ident, mets_doc, physical_map, thumbs_map):
     return manifest.toJSON(top=True)
 
 
-def make_manifest_collection(pagination, label, collection_id, page_num=None):
+def make_manifest_collection(pagination, subcollections, label, collection_id,
+                             page_num=None):
     if page_num is not None:
         page_id = 'p{}'.format(page_num)
     else:
@@ -156,11 +157,15 @@ def make_manifest_collection(pagination, label, collection_id, page_num=None):
         "@id": url_for('iiif.get_collection', collection_id=collection_id,
                        page_id=page_id, _external=True),
         "@type": "sc:Collection",
+        "total": pagination.total,
+        "label": label,
     }
+    if collection_id != 'index':
+        collection['within'] = url_for(
+            'iiif.get_collection', collection_id='index', page_id='top',
+            _external=True)
     if page_id == 'top':
         collection.update({
-            "label": label,
-            "total": pagination.total,
             "first": url_for(
                 'iiif.get_collection', collection_id=collection_id,
                 page_id='p1', _external=True),
@@ -181,6 +186,14 @@ def make_manifest_collection(pagination, label, collection_id, page_num=None):
                 'label': m.label
             } for m in pagination.items]
         })
+        if page_num == 1 and subcollections:
+            collection.update({
+                'collections': [{
+                    '@id': url_for('iiif.get_collection', collection_id=c.id,
+                                   page_id='top', _external=True),
+                    '@type': 'sc:Collection',
+                    'label': c.label
+                } for c in subcollections]})
         if pagination.has_next:
             collection['next'] = url_for(
                 'iiif.get_collection', collection_id=collection_id,

@@ -288,15 +288,17 @@ class Annotation(db.Model):
 collection_manifest_table = db.Table(
     'collection_manifest',
     db.Column('collection_id', db.Integer,
-              db.ForeignKey('collection.surrogate_id')),
+              db.ForeignKey('collection.surrogate_id'),
+              nullable=False),
     db.Column('manifest_id', db.Integer,
-              db.ForeignKey('manifest.surrogate_id')))
+              db.ForeignKey('manifest.surrogate_id'),
+              nullable=False))
 
 
 class Collection(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
-    id = db.Column(db.String, unique=True)
-    label = db.Column(db.String)
+    id = db.Column(db.String, unique=True, nullable=False)
+    label = db.Column(db.String, nullable=False)
     manifests = db.relationship(
         'Manifest', secondary=collection_manifest_table,
         backref=db.backref('collections', lazy='dynamic'),
