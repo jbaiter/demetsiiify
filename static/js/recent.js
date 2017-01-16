@@ -68,7 +68,7 @@ var app = new Vue({
       <div class="columns is-multiline">
         <ManifestView v-for="item in items" :item="item" />
         <div v-if="nextPage" class="column is-half is-offset-3">
-          <button @click="loadNext" class="button is-primary"
+          <button @click="loadNext" class="button is-primary load-more"
                   :class="{'is-loading': isLoading}">
             More
           </button>
