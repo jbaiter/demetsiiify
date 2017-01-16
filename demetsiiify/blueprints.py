@@ -340,7 +340,7 @@ def get_collection(collection_id='index', page_id='top'):
             per_page=current_app.config['ITEMS_PER_PAGE'])
         label = collection.label
     return jsonify(make_manifest_collection(
-        pagination, label, collection_id, page_num))
+        pagination, None, label, collection_id, page_num))
 
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')
