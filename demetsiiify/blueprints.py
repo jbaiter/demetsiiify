@@ -184,12 +184,12 @@ def api_import():
 
     Will return the job status as a JSON document.
     """
-    mets_url = request.json.get('url')
+    mets_url = request.json.get('url', timeout=30)
     if re.match(r'https?://dfg-viewer.de/.*?', mets_url):
         mets_url = _extract_mets_from_dfgviewer(mets_url)
     resp = None
     try:
-        resp = requests.head(mets_url)
+        resp = requests.head(mets_url, timeout=30)
     except:
         pass
     if not resp:

@@ -319,7 +319,8 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
     try:
         # We open it streaming, since we don't neccessarily have to read
         # the complete response (e.g. if the MIME type is unsuitable)
-        resp = ses.get(location, allow_redirects=True, stream=True)
+        resp = ses.get(location, allow_redirects=True, stream=True,
+                       timeout=30)
     except Exception as e:
         resp = None
     if not resp:
