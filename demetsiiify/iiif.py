@@ -117,10 +117,10 @@ def make_manifest(ident, mets_doc, physical_map, thumbs_map):
                                          label=make_label(mets_doc.metadata))
     for meta in make_metadata(mets_doc.metadata):
         manifest.set_metadata(meta)
-    manifest.description = mets_doc.metadata.get('description', '')
-    manifest.seeAlso = mets_doc.metadata.get('see_also', '')
-    manifest.related = mets_doc.metadata.get('related', '')
-    manifest.attribution = mets_doc.metadata.get('attribution', '')
+    manifest.description = mets_doc.metadata.get('description') or ''
+    manifest.seeAlso = mets_doc.metadata.get('see_also') or ''
+    manifest.related = mets_doc.metadata.get('related') or ''
+    manifest.attribution = mets_doc.metadata.get('attribution') or ''
     manifest.logo = mets_doc.metadata.get('logo', '')
     manifest.license = LICENSE_MAP.get(mets_doc.metadata.get('license'), '')
 
