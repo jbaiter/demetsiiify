@@ -199,18 +199,31 @@ class MetsDocument:
         self.metadata['description'] = self._findtext(".//mods:abstract") or ""
         # TODO: Add mods:notes to description
 
-    def read_files(self, jpeg_only=False, yield_progress=True, concurrency=2):
+    def _read_singlethreaded(self, mets_info, yield_progress=True):
+        # Single-threaded download
         about_url = "{}://{}/about".format(
             current_app.config['PREFERRED_URL_SCHEME'],
             current_app.config['SERVER_NAME'])
-        # FIXME: This is still way too messy!
-        self.files = OrderedDict()
-        mets_info = [
-            (id_, location, mimetype)
-            for id_, location, mimetype in
-            (self._get_image_specs(e) for e in self._findall(".//mets:file"))
-            if location and location.startswith('http')]
-        with ThreadPoolExecutor(max_workers=concurrency or 1) as pool:
+        for idx, (id_, loc, mime) in enumerate(mets_info, start=1):
+            db_info = models.Image.by_url(loc)
+            if db_info:
+                info = ImageInfo(id_, loc, mime, db_info.width,
+                                 db_info.height)
+            else:
+                info = image_info(id_, loc, mime, jpeg_only=True,
+                                  about_url=about_url)
+            if info is not None:
+                self.files[info.id] = info
+                if yield_progress:
+                    yield idx, len(mets_info)
+
+    def _read_multithreaded(self, mets_info, yield_progress=True,
+                            concurrency=2):
+        about_url = "{}://{}/about".format(
+            current_app.config['PREFERRED_URL_SCHEME'],
+            current_app.config['SERVER_NAME'])
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            # Multi-threaded download
             futs = []
             for id_, loc, mime, in mets_info:
                 db_info = models.Image.by_url(loc)
@@ -241,6 +254,21 @@ class MetsDocument:
                     self.files[info.id] = info
                     if yield_progress:
                         yield idx, len(futs)
+
+    def read_files(self, jpeg_only=False, yield_progress=True, concurrency=2):
+        # FIXME: This is still way too messy!
+        self.files = OrderedDict()
+        mets_info = [
+            (id_, location, mimetype)
+            for id_, location, mimetype in
+            (self._get_image_specs(e) for e in self._findall(".//mets:file"))
+            if location and location.startswith('http')]
+        if not concurrency or concurrency == 1:
+            return self._read_singlethreaded(mets_info, jpeg_only,
+                                             yield_progress)
+        else:
+            return self._read_multithreaded(mets_info, jpeg_only,
+                                            yield_progress, concurrency)
 
     def read_physical_items(self):
         """ Create a map from physical IDs to (label, image_info) pairs from
