@@ -11,7 +11,11 @@ Recent Imports
 
 {% block footer %}
 [[ super() ]]
-<script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
+{% if debug %}
+  <script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
+{% else %}
+  <script src="[[ url_for('static', filename='vendor/vue.min.js') ]]"></script>
+{%- endif %}
 <script src="[[ url_for('static', filename='vendor/axios.min.js') ]]"></script>
 <script src="[[ url_for('static', filename='js/recent.js') ]]"></script>
 {% endblock %}

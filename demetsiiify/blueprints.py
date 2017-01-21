@@ -38,6 +38,11 @@ def nl2br(eval_ctx, value):
     return result
 
 
+@view.context_processor
+def inject_debug():
+    return dict(debug=current_app.debug)
+
+
 @api.errorhandler(Exception)
 def handle_error(error):
     return jsonify({
