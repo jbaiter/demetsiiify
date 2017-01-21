@@ -30,7 +30,7 @@ services:
     volumes:
       - .:/code
     environment:
-      DEBUG: ''
+      DEBUG: 1
     links:
       - postgres
       - redis
