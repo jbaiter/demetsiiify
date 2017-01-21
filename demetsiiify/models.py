@@ -148,7 +148,7 @@ class IIIFImage(db.Model):
             query['width'] = width
         if height:
             query['height'] = height
-        query = self.images.filter_by(**query)
+        query = self.images.filter_by(**query).options(load_only("url"))
         if width is None and height is None:
             query = query.order_by(Image.width.desc())
         image = query.first()
@@ -192,7 +192,7 @@ class Image(db.Model):
     height = db.Column(db.Integer, nullable=False)
     format = db.Column(db.Text, nullable=False)
     iiif_id = db.Column(db.String(22), db.ForeignKey('iiif_image.id'),
-                        nullable=True)
+                        nullable=True, index=True)
 
     def __init__(self, url, width, height, format, iiif_id=None):
         self.url = url
