@@ -379,7 +379,7 @@ var app = new Vue({
         </nav>
       </div>
       <div class="hero-body">
-        <div class="container has-text-centered">
+        <div class="container has-text-centered mets-input">
           <MetsForm @new-job="onJobCreated" :jobIds="jobIds" />
           <WelcomeBox v-if="showWelcome" @dismiss="onWelcomeDismissed"/>
           <div class="jobs">

@@ -97,6 +97,7 @@ pre {
 
 .manifest-preview img {
   max-height: 200px;
+  max-width: 150px;
   width: auto;
 }
 
@@ -109,7 +110,7 @@ pre {
   border-radius: 0;
 }
 
-.recent-manifests {
+.container.recent-manifests, .container.browse {
   margin-top: 2em;
 }
 
@@ -134,7 +135,7 @@ pre {
   margin-top: 2em;
 }
 
-.container:not(.recent-manifests) {
+.container.mets-input, .container.content {
   max-width: 800px;
 }
 
@@ -164,6 +165,19 @@ button.load-more {
   width: 100%;
 }
 
+.page-indicator {
+  order: 2;
+}
+
 .nav-item a.is-brand, a.nav-item.is-brand {
   padding: .5rem .75rem;
+}
+
+.pagination {
+  margin: 1rem 0;
+}
+
+.nav {
+  background: 0 0;
+  box-shadow: 0 1px 0 rgba(219,219,219,.3);
 }

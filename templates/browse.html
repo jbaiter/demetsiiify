@@ -1,16 +1,22 @@
 {% extends "base.html" %}
 
 {% block title %}
-Recent Imports
+Browse Collections
 {% endblock %}
 
 {% block content %}
-<div class="recent">
+<div class="browse">
 </div>
 {% endblock %}
 
 {% block footer %}
 [[ super() ]]
+
+<script type="application/javascript">
+  window.rootCollection = [[ root_collection|safe ]];
+  window.currentPage = [[ initial_page|safe ]];
+</script>
+
 {% if debug %}
   <script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
 {% else %}
@@ -18,5 +24,5 @@ Recent Imports
 {%- endif %}
 <script src="[[ url_for('static', filename='vendor/axios.min.js') ]]"></script>
 <script src="[[ url_for('static', filename='js/common.js') ]]"></script>
-<script src="[[ url_for('static', filename='js/recent.js') ]]"></script>
+<script src="[[ url_for('static', filename='js/browse.js') ]]"></script>
 {% endblock %}

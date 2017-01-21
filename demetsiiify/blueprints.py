@@ -109,6 +109,14 @@ def recent():
     return render_template('recent.html')
 
 
+@view.route('/browse')
+def browse():
+    return render_template(
+        'browse.html',
+        root_collection=get_collection('index', 'top').get_data(True),
+        initial_page=get_collection('index', 'p1').get_data(True))
+
+
 @view.route('/about')
 def about():
     return render_template('about.html')
@@ -139,10 +147,11 @@ def api_get_recent_manifests():
     return jsonify(dict(
         next_page=pagination.next_num if pagination.has_next else None,
         manifests=[
-            {'id': m.id,
-             'manifest': url_for('iiif.get_manifest', manif_id=m.id,
-                                 _external=True),
-             'preview': m.manifest['sequences'][0]['canvases'][0]['thumbnail'],
+            {'@id': url_for('iiif.get_manifest', manif_id=m.id,
+                            _external=True),
+             'thumbnail': m.manifest.get(
+                 'thumbnail',
+                 m.manifest['sequences'][0]['canvases'][0]['thumbnail']),
              'label': m.label,
              'metsurl': m.origin,
              'attribution': m.manifest['attribution'],
@@ -329,26 +338,32 @@ def register_email_notification():
 @cors('*')
 def get_collection(collection_id='index', page_id='top'):
     """ Get the collection of all IIIF manifests on this server. """
+    subcollections = None
     if page_id == 'top':
         page_num = None
     else:
         page_num = int(page_id[1:])
     if collection_id == 'index':
-        pagination = Manifest.query.paginate(
+        manifest_pagination = Manifest.query.paginate(
             page=page_num,
             per_page=current_app.config['ITEMS_PER_PAGE'])
+        if page_num == 1:
+            subcollections = (
+                Collection.query.filter_by(parent_collection=None).all())
         label = "All manifests available at {}".format(
             current_app.config['SERVER_NAME'])
     else:
         collection = Collection.get(collection_id)
         if not collection:
             abort(404)
-        pagination = collection.manifests.paginate(
+        manifest_pagination = collection.manifests.paginate(
             page=page_num,
             per_page=current_app.config['ITEMS_PER_PAGE'])
         label = collection.label
+        if page_num == 1:
+            subcollections = collection.child_collections.all()
     return jsonify(make_manifest_collection(
-        pagination, None, label, collection_id, page_num))
+        manifest_pagination, subcollections, label, collection_id, page_num))
 
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')

@@ -183,17 +183,24 @@ def make_manifest_collection(pagination, subcollections, label, collection_id,
                 '@id': url_for('iiif.get_manifest', manif_id=m.id,
                                _external=True),
                 '@type': 'sc:Manifest',
-                'label': m.label
+                'label': m.label,
+                'attribution': m.manifest['attribution'],
+                'logo': m.manifest['logo'],
+                'thumbnail': m.manifest.get(
+                    'thumbnail',
+                    m.manifest['sequences'][0]['canvases'][0]['thumbnail'])
             } for m in pagination.items]
         })
         if page_num == 1 and subcollections:
-            collection.update({
-                'collections': [{
-                    '@id': url_for('iiif.get_collection', collection_id=c.id,
-                                   page_id='top', _external=True),
-                    '@type': 'sc:Collection',
-                    'label': c.label
-                } for c in subcollections]})
+            collection['collections'] = []
+            for coll in subcollections:
+                if not coll.manifests.count():
+                    continue
+                manifests_pagination = coll.manifests.paginate(
+                    page=None, per_page=current_app.config['ITEMS_PER_PAGE'])
+                iiif_coll = make_manifest_collection(
+                    manifests_pagination, None, coll.label, coll.id, None)
+                collection['collections'].append(iiif_coll)
         if pagination.has_next:
             collection['next'] = url_for(
                 'iiif.get_collection', collection_id=collection_id,
