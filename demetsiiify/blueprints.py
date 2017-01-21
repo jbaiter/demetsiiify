@@ -8,7 +8,7 @@ from urllib.parse import urlparse, unquote
 import requests
 import shortuuid
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
-                   render_template, request, url_for)
+                   redirect, render_template, request, url_for)
 from flask_autodoc import Autodoc
 from jinja2 import evalcontextfilter, Markup, escape
 from rq import Connection, get_failed_queue
@@ -26,12 +26,6 @@ api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
 
 auto = Autodoc()
-
-
-def redirect(location, code=302):
-    resp = make_response('', code)
-    resp.headers['Location'] = location
-    return resp
 
 
 @view.app_template_filter()
@@ -460,7 +454,7 @@ def get_image(image_id, region, size, rotation, quality, format):
     if url is None:
         abort(501)
     else:
-        return redirect(url, 303)
+        return redirect(url, 301)
 
 
 @iiif.route('/iiif/annotation/<annotation_id>', methods=['GET'])
