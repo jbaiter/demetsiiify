@@ -3,6 +3,7 @@ from datetime import datetime
 import shortuuid
 from flask import current_app, url_for
 from sqlalchemy.dialects import postgresql as pg
+from sqlalchemy.orm import load_only
 
 from .extensions import db
 
@@ -68,7 +69,7 @@ class Manifest(db.Model):
         manifest = cls.query.filter_by(id=id).first()
         collections = [
             ('index',
-            "All manifests available at {}".format(
+             "All manifests available at {}".format(
                 current_app.config['SERVER_NAME']))]
         collections.extend([
             (c.id, c.label)
@@ -227,7 +228,7 @@ class Image(db.Model):
 class Annotation(db.Model):
     surrogate_id = db.Column(db.Integer, primary_key=True)
     id = db.Column(db.String, unique=True, nullable=False)
-    target = db.Column(db.String, nullable=False)
+    target = db.Column(db.String, nullable=False, index=True)
     motivation = db.Column(db.String, nullable=False)
     date = db.Column(db.DateTime)
     annotation = db.Column(pg.JSONB, nullable=False)
@@ -289,10 +290,10 @@ collection_manifest_table = db.Table(
     'collection_manifest',
     db.Column('collection_id', db.Integer,
               db.ForeignKey('collection.surrogate_id'),
-              nullable=False),
+              nullable=False, index=True),
     db.Column('manifest_id', db.Integer,
               db.ForeignKey('manifest.surrogate_id'),
-              nullable=False))
+              nullable=False, index=True))
 
 
 class Collection(db.Model):
