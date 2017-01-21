@@ -163,3 +163,7 @@ pre {
 button.load-more {
   width: 100%;
 }
+
+.nav-item a.is-brand, a.nav-item.is-brand {
+  padding: .5rem .75rem;
+}
