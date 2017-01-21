@@ -8,7 +8,7 @@ from urllib.parse import urlparse, unquote
 import requests
 import shortuuid
 from flask import (Blueprint, abort, current_app, jsonify, make_response,
-                   redirect, render_template, request, url_for)
+                   render_template, request, url_for)
 from flask_autodoc import Autodoc
 from jinja2 import evalcontextfilter, Markup, escape
 from rq import Connection, get_failed_queue
@@ -26,6 +26,12 @@ api = Blueprint('api', __name__)
 iiif = Blueprint('iiif', __name__)
 
 auto = Autodoc()
+
+
+def redirect(location, code=302):
+    resp = make_response('', code)
+    resp.headers['Location'] = location
+    return resp
 
 
 @view.app_template_filter()
