@@ -199,7 +199,7 @@ class MetsDocument:
         self.metadata['description'] = self._findtext(".//mods:abstract") or ""
         # TODO: Add mods:notes to description
 
-    def read_files(self, jpeg_only=False, yield_progress=True):
+    def read_files(self, jpeg_only=False, yield_progress=True, concurrency=2):
         about_url = "{}://{}/about".format(
             current_app.config['PREFERRED_URL_SCHEME'],
             current_app.config['SERVER_NAME'])
@@ -210,7 +210,7 @@ class MetsDocument:
             for id_, location, mimetype in
             (self._get_image_specs(e) for e in self._findall(".//mets:file"))
             if location and location.startswith('http')]
-        with ThreadPoolExecutor(max_workers=4) as pool:
+        with ThreadPoolExecutor(max_workers=concurrency or 1) as pool:
             futs = []
             for id_, loc, mime, in mets_info:
                 db_info = models.Image.by_url(loc)

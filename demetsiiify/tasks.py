@@ -34,10 +34,11 @@ def get_redis():
 queue, oai_queue = make_queues(get_redis(), 'tasks', 'oai_imports')
 
 
-def _read_files(doc, job=None):
+def _read_files(doc, job=None, concurrency=None):
     times = deque(maxlen=50)
     start_time = time.time()
-    for idx, total in doc.read_files(jpeg_only=True, yield_progress=True):
+    for idx, total in doc.read_files(jpeg_only=True, yield_progress=True,
+                                     concurrency=concurrency):
         duration = time.time() - start_time
         times.append(duration)
         if job:
@@ -82,7 +83,7 @@ def _notify_if_last(job_id, manifest_id):
     redis.delete('recipients.{}'.format(job_id))
 
 
-def import_mets_job(mets_url, collection_id=None):
+def import_mets_job(mets_url, collection_id=None, concurrency=2):
     job = get_current_job()
     try:
         xml = requests.get(mets_url, allow_redirects=True).content
@@ -95,7 +96,7 @@ def import_mets_job(mets_url, collection_id=None):
                 fp.write(ET.tostring(tree, pretty_print=True))
 
         try:
-            _read_files(doc, job)
+            _read_files(doc, job, concurrency)
         except Exception as e:
             # Write images that could be read to database, as to a void
             # a costly re-scrape when the bug(?) gets fixed
