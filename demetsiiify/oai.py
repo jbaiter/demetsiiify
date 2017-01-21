@@ -37,7 +37,7 @@ class OaiRepository:
             return ET.fromstring(resp.content)
         else:
             raise OaiException("Error retrieving data from server (code {})"
-                               .format(resp.status))
+                               .format(resp.status_code))
 
     def _format_time(self, time):
         if isinstance(time, str):

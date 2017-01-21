@@ -139,7 +139,8 @@ def import_mets_job(mets_url, collection_id=None, concurrency=2):
         # orphaned images.
         IIIFImage.delete_orphaned()
         db.session.commit()
-        _notify_if_last(job.id, manifest['@id'])
+        if job:
+            _notify_if_last(job.id, manifest['@id'])
         return manifest['@id']
     except Exception as e:
         db.session.rollback()
