@@ -29,6 +29,8 @@ services:
       - "5000:5000"
     volumes:
       - .:/code
+    environment:
+      DEBUG: ''
     links:
       - postgres
       - redis

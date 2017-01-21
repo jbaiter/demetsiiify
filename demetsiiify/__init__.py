@@ -31,6 +31,7 @@ def _force_preferred_scheme():
 def create_app():
     app = CustomFlask(__name__, template_folder='../templates',
                       static_folder='../static')
+    app.config['DEBUG'] = os.environ.get('DEBUG') is not None
     app.config['PREFERRED_URL_SCHEME'] = os.environ.get(
         'PREFERRED_URL_SCHEME', 'http')
     app.config['SERVER_NAME'] = os.environ.get('SERVER_NAME', 'localhost:5000')
