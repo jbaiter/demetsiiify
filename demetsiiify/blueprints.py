@@ -292,7 +292,10 @@ def sse_stream(task_id):
                 continue
             yield ServerSentEvent(status).encode()
             last_status = status
-    return current_app.response_class(gen(redis), mimetype="text/event-stream")
+    resp = current_app.response_class(gen(redis), mimetype="text/event-stream")
+    resp.headers['X-Accel-Buffering'] = 'no'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
 
 
 @api.route('/api/tasks/notify', methods=['POST'])
