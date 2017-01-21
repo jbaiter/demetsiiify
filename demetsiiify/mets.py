@@ -264,11 +264,10 @@ class MetsDocument:
             (self._get_image_specs(e) for e in self._findall(".//mets:file"))
             if location and location.startswith('http')]
         if not concurrency or concurrency == 1:
-            return self._read_singlethreaded(mets_info, jpeg_only,
-                                             yield_progress)
+            return self._read_singlethreaded(mets_info, yield_progress)
         else:
-            return self._read_multithreaded(mets_info, jpeg_only,
-                                            yield_progress, concurrency)
+            return self._read_multithreaded(mets_info, yield_progress,
+                                            concurrency)
 
     def read_physical_items(self):
         """ Create a map from physical IDs to (label, image_info) pairs from
