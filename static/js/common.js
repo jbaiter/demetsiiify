@@ -38,7 +38,7 @@ Vue.component('ManifestView', {
       return `is-${this.width || 4}`;
     },
     viewerUrl: function() {
-      return `/view/${this.manifest['@id'].split('/').slice(-2, 2)}`;
+      return `/view/${this.manifest['@id'].split('/').slice(-2)[0]}`;
     },
     truncatedLabel: function() {
       if (this.manifest.label.length < 100) {
