@@ -39,7 +39,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = (
         'postgresql://postgres:postgres@postgres:5432/postgres')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['ITEMS_PER_PAGE'] = 198
+    app.config['ITEMS_PER_PAGE'] = 50
     app.config['DUMP_METS'] = os.environ.get('DUMP_METS')
     app.config['SMTP_SERVER'] = os.environ.get('SMTP_SERVER')
     app.config['SMTP_USER'] = os.environ.get('SMTP_USER')
