@@ -372,6 +372,7 @@ var app = new Vue({
           </label>
           <input type="checkbox" class="is-hidden" id="nav-toggle-state" />
           <div class="nav-right nav-menu">
+            <a class="nav-item" href="/browse">Browse Collections</a>
             <a class="nav-item" href="/recent">Recent Imports</a>
             <a class="nav-item" href="/apidocs">API</a>
             <a class="nav-item" href="/about">About</a>
