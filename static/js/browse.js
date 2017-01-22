@@ -97,11 +97,9 @@ Vue.component('PageDisplay', {
   template: `
     <div class="current-page">
       <Pagination :page="page" />
-      <div class="container">
-        <div class="columns is-multiline">
-          <ManifestView v-for="manifest in page.manifests"
-                        :manifest="manifest" width="6"/>
-        </div>
+      <div class="container columns is-multiline">
+        <ManifestView v-for="manifest in page.manifests"
+                      :manifest="manifest" width="6"/>
       </div>
       <Pagination :page="page" />
     </div>`,
