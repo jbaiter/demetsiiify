@@ -55,5 +55,14 @@
       </div>
     </footer>
     {% endblock %}
+    {% block scripts %}
+    {% if debug %}
+      <script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
+    {% else %}
+      <script src="[[ url_for('static', filename='vendor/vue.min.js') ]]"></script>
+    {%- endif %}
+    <script src="[[ url_for('static', filename='vendor/axios.min.js') ]]"></script>
+    <script src="[[ url_for('static', filename='js/common.js') ]]"></script>
+    {% endblock %}
   </body>
 </html>

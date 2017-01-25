@@ -54,57 +54,6 @@ Vue.component('CollectionDisplay', {
 });
 
 
-Vue.component('Pagination', {
-  props: ['page'],
-  template: `
-    <nav class="pagination is-centered">
-      <a class="pagination-previous" @click="onPrevious"
-         :class="{'is-disabled': !page.prev}">
-        Previous
-      </a>
-      <span class="page-indicator">
-        {{ page.startIndex + 1 }} - {{ pageEndIndex }} / {{ page.total }}
-      </span>
-      <a class="pagination-next" @click="onNext"
-         :class="{'is-disabled': !page.next}">
-        Next
-      </a>
-    </nav>`,
-  methods: {
-    onNext: function() {
-      axios.get(this.page.next)
-        .then(function(response) {
-          bus.$emit('show-page', response.data);
-        });
-    },
-    onPrevious: function() {
-      axios.get(this.page.prev)
-        .then(function(response) {
-          bus.$emit('show-page', response.data);
-        });
-    }
-  },
-  computed: {
-    pageEndIndex: function() {
-      return this.page.startIndex + this.page.manifests.length;
-    }
-  }
-});
-
-
-Vue.component('PageDisplay', {
-  props: ['page'],
-  template: `
-    <div class="current-page">
-      <Pagination :page="page" />
-      <div class="container columns is-multiline">
-        <ManifestView v-for="manifest in page.manifests"
-                      :manifest="manifest" width="6"/>
-      </div>
-      <Pagination :page="page" />
-    </div>`,
-});
-
 var app = new Vue({
   data: {
     rootCollection: window.rootCollection,
@@ -113,7 +62,7 @@ var app = new Vue({
   template: `
     <div class="container browse">
       <div class="columns">
-        <div class="column is-3">
+        <div v-if="currentPage.collections" class="column is-3">
           <aside class="menu">
             <ul class="menu-list">
               <CollectionDisplay v-if="rootCollection"
@@ -125,7 +74,14 @@ var app = new Vue({
         <div class="column">
           <h1 class="title has-text-centered">{{ currentPage.label }}</h1>
           <hr>
-          <PageDisplay v-if="currentPage" :page="currentPage" />
+          <PageDisplay v-if="currentPage" :prev="currentPage.prev"
+                       :next="currentPage.next" :total="currentPage.total"
+                       :startIndex="currentPage.startIndex"
+                       :perPage="currentPage.manifests.length"
+                       @change-page="onPageChange">
+            <ManifestView v-for="manifest in currentPage.manifests"
+                          :manifest="manifest" width="6"/>
+          </PageDisplay>
         </div>
       </div>
     </div>`,
@@ -156,5 +112,6 @@ var app = new Vue({
     }
   }
 });
+
 
 app.$mount('.browse');

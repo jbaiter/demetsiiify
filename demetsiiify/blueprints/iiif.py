@@ -6,7 +6,7 @@ from flask import (Blueprint, abort, current_app, jsonify, make_response,
                    redirect, request, url_for)
 
 from ..extensions import auto, db
-from ..iiif import make_manifest_collection
+from ..iiif import make_manifest_collection, make_annotation_list
 from ..models import Annotation, Collection, IIIFImage, Manifest
 
 
@@ -39,22 +39,21 @@ def get_collection(collection_id='index', page_id='top'):
         page_num = None
     else:
         page_num = int(page_id[1:])
+    per_page = current_app.config['ITEMS_PER_PAGE']
     if collection_id == 'index':
         manifest_pagination = Manifest.query.paginate(
-            page=page_num,
-            per_page=current_app.config['ITEMS_PER_PAGE'])
+            page=page_num, per_page=per_page)
         if page_num == 1:
             subcollections = (
                 Collection.query.filter_by(parent_collection=None).all())
-        label = "All manifests available at {}".format(
+        label = "Manifests available at {}".format(
             current_app.config['SERVER_NAME'])
     else:
         collection = Collection.get(collection_id)
         if not collection:
             abort(404)
         manifest_pagination = collection.manifests.paginate(
-            page=page_num,
-            per_page=current_app.config['ITEMS_PER_PAGE'])
+            page=page_num, per_page=per_page)
         label = collection.label
         if page_num == 1:
             subcollections = collection.child_collections.all()
@@ -228,28 +227,7 @@ def search_annotations():
     limit = int(request.args.get('limit', '100'))
     pagination = Annotation.search(**search_args).paginate(
         page=page_num, per_page=limit, error_out=False)
-    return jsonify({
-        '@context': 'http://iiif.io/api/presentation/2/context.json',
-        '@id': request.url,
-        '@type': 'sc:AnnotationList',
-        'within': {
-            '@type': 'sc:Layer',
-            'total': pagination.total,
-            'first': url_for('iiif.search_annotations', page=1, _external=True,
-                             **{k: v for k, v in request.args.items()
-                                if k != 'page'}),
-            'last': url_for('iiif.search_annotations', page=pagination.pages,
-                            _external=True,
-                            **{k: v for k, v in request.args.items()
-                               if k != 'page'}),
-        },
-        'next': url_for('iiif.search_annotations', page=pagination.next_num,
-                        _external=True,
-                        **{k: v for k, v in request.args.items()
-                           if k != 'page'}),
-        'startIndex': (page_num-1) * pagination.per_page,
-        'resources': [a.annotation for a in pagination.items]
-    })
+    return jsonify(make_annotation_list(pagination, request.url, request.args))
 
 
 @iiif.route('/iiif/annotation', methods=['POST'])

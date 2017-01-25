@@ -3,8 +3,9 @@ import re
 from flask import Blueprint, abort, current_app, render_template
 from jinja2 import Markup, escape, evalcontextfilter
 
-from ..models import Manifest
+from ..models import Manifest, Annotation, Collection
 from ..extensions import auto
+from ..iiif import make_manifest_collection, make_annotation_list
 
 
 PARAGRAPH_RE = re.compile(r'(?:\r\n|\r|\n){2,}')
@@ -51,11 +52,18 @@ def recent():
 
 @view.route('/browse')
 def browse():
-    from .iiif import get_collection
+    pagination = Manifest.query.paginate(
+        page=1, per_page=current_app.config['ITEMS_PER_PAGE'])
+    subcollections = (
+        Collection.query.filter_by(parent_collection=None).all())
+    label = "All manifests available at {}".format(
+        current_app.config['SERVER_NAME'])
     return render_template(
         'browse.html',
-        root_collection=get_collection('index', 'top').get_data(True),
-        initial_page=get_collection('index', 'p1').get_data(True))
+        root_collection=make_manifest_collection(
+            pagination, subcollections, label, 'index', 'top'),
+        initial_page=make_manifest_collection(
+            pagination, subcollections, label, 'index', 'p1'))
 
 
 @view.route('/about')

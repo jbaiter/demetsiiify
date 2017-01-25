@@ -1,16 +1,4 @@
 /* global Vue */
-
-// ChildNode.remove() polyfill for Internet Explorer
-// from: https://github.com/jserz/js_piece/blob/master/DOM/ChildNode/remove()/remove().md
-(function (arr) {
-  arr.forEach(function (item) {
-    item.remove = item.remove || function () {
-      this.parentNode.removeChild(this);
-    };
-  });
-})([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
-
-
 Vue.component("WelcomeBox", {
   template: `
     <article class="message is-info welcome-box has-text-left">

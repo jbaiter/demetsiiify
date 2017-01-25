@@ -1,3 +1,14 @@
+// ChildNode.remove() polyfill for Internet Explorer
+// from: https://github.com/jserz/js_piece/blob/master/DOM/ChildNode/remove()/remove().md
+(function (arr) {
+  arr.forEach(function (item) {
+    item.remove = item.remove || function () {
+      this.parentNode.removeChild(this);
+    };
+  });
+})([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
+
+
 Vue.component('ManifestView', {
   props: ['manifest', 'width'],
   template: `
@@ -56,6 +67,69 @@ Vue.component('ManifestView', {
         }
         return label;
       }
+    }
+  }
+});
+
+
+Vue.component('Pagination', {
+  props: ['prev', 'next', 'total', 'startIndex', 'perPage'],
+  template: `
+    <nav class="pagination is-centered">
+      <a class="pagination-previous" @click="onPrevious"
+         :class="{'is-disabled': !prev}">
+        Previous
+      </a>
+      <span class="page-indicator">
+        {{ startIndex + 1 }} - {{ pageEndIndex }} / {{ total }}
+      </span>
+      <a class="pagination-next" @click="onNext"
+         :class="{'is-disabled': !next}">
+        Next
+      </a>
+    </nav>`,
+  methods: {
+    onNext: function() {
+      var vm = this;
+      axios.get(this.next)
+        .then(function(response) {
+          vm.$emit('change-page', response.data);
+        });
+    },
+    onPrevious: function() {
+      var vm = this;
+      axios.get(this.prev)
+        .then(function(response) {
+          vm.$emit('change-page', response.data);
+        });
+    }
+  },
+  computed: {
+    pageEndIndex: function() {
+      return this.startIndex + this.perPage;
+    }
+  }
+});
+
+
+Vue.component('PageDisplay', {
+  props: ['prev', 'next', 'total', 'startIndex', 'perPage'],
+  template: `
+    <div class="current-page">
+      <Pagination :prev="prev" :next="next" :total="total"
+                  :startIndex="startIndex" :perPage="perPage"
+                  @change-page="onPageChange" />
+      <div class="container columns is-multiline">
+        <slot />
+      </div>
+      <Pagination :prev="prev" :next="next" :total="total"
+                  :startIndex="startIndex" :perPage="perPage"
+                  @change-page="onPageChange" />
+      <div class="container columns is-multiline">
+    </div>`,
+  methods: {
+    onPageChange: function(page) {
+      this.$emit('change-page', page);
     }
   }
 });

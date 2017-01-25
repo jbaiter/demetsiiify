@@ -9,20 +9,12 @@ Browse Collections
 </div>
 {% endblock %}
 
-{% block footer %}
+{% block scripts %}
 [[ super() ]]
 
 <script type="application/javascript">
   window.rootCollection = [[ root_collection|safe ]];
   window.currentPage = [[ initial_page|safe ]];
 </script>
-
-{% if debug %}
-  <script src="[[ url_for('static', filename='vendor/vue.js') ]]"></script>
-{% else %}
-  <script src="[[ url_for('static', filename='vendor/vue.min.js') ]]"></script>
-{%- endif %}
-<script src="[[ url_for('static', filename='vendor/axios.min.js') ]]"></script>
-<script src="[[ url_for('static', filename='js/common.js') ]]"></script>
 <script src="[[ url_for('static', filename='js/browse.js') ]]"></script>
 {% endblock %}

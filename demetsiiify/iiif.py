@@ -210,3 +210,39 @@ def make_manifest_collection(pagination, subcollections, label, collection_id,
                 'iiif.get_collection', collection_id=collection_id,
                 page_id='p{}'.format(pagination.prev_num), _external=True)
     return collection
+
+
+def make_annotation_list(pagination, request_url, request_args):
+    out = {
+        '@context': 'http://iiif.io/api/presentation/2/context.json',
+        '@id': request_url,
+        '@type': 'sc:AnnotationList',
+        'within': {
+            '@type': 'sc:Layer',
+            'total': pagination.total,
+            'first': url_for('iiif.search_annotations', p=1, _external=True,
+                             **{k: v for k, v in request_args.items()
+                                if k != 'p'}),
+            'last': url_for('iiif.search_annotations', p=pagination.pages,
+                            _external=True,
+                            **{k: v for k, v in request_args.items()
+                               if k != 'p'}),
+            'ignored': [k for k in request_args
+                        if k not in ('q', 'motivation', 'date', 'user', 'p')]
+        },
+        'startIndex': (pagination.page-1) * pagination.per_page,
+        'resources': [a.annotation for a in pagination.items],
+    }
+    if pagination.has_next:
+        out['next'] = url_for(
+            'iiif.search_annotations', p=pagination.next_num,
+            _external=True,
+            **{k: v for k, v in request_args.items()
+                if k != 'p'})
+    if pagination.has_prev:
+        out['next'] = url_for(
+            'iiif.search_annotations', p=pagination.prev_num,
+            _external=True,
+            **{k: v for k, v in request_args.items()
+                if k != 'p'})
+    return out
