@@ -22,6 +22,8 @@ class Identifier(db.Model):
 
     @classmethod
     def save(cls, *identifiers):
+        if not identifiers:
+            return
         base_query = pg.insert(cls).returning(Identifier.id)
         return db.session.execute(
             base_query.on_conflict_do_nothing(),
@@ -52,6 +54,8 @@ class Manifest(db.Model):
 
     @classmethod
     def save(cls, *manifests):
+        if not manifests:
+            return
         base_query = pg.insert(cls).returning(Manifest.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
@@ -161,6 +165,8 @@ class IIIFImage(db.Model):
 
     @classmethod
     def save(cls, *images):
+        if not images:
+            return
         base_query = pg.insert(cls).returning(IIIFImage.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
@@ -213,6 +219,8 @@ class Image(db.Model):
 
     @classmethod
     def save(cls, *images):
+        if not images:
+            return
         base_query = pg.insert(cls).returning(Image.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
@@ -260,6 +268,8 @@ class Annotation(db.Model):
 
     @classmethod
     def save(cls, *annotations):
+        if not annotations:
+            return
         base_query = pg.insert(cls).returning(Annotation.id)
         return db.session.execute(
             base_query.on_conflict_do_update(
@@ -316,6 +326,8 @@ class Collection(db.Model):
 
     @classmethod
     def save(cls, *collections):
+        if not collections:
+            return
         base_query = pg.insert(cls).returning(Collection.id)
         return db.session.execute(
             base_query.on_conflict_do_nothing(),
