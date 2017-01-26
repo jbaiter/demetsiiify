@@ -1,7 +1,7 @@
 import os
 
 from flask import Flask, current_app
-from redis import Redis
+from redis import StrictRedis
 from rq import Connection, Queue, Worker
 
 from .extensions import db
@@ -55,7 +55,7 @@ def create_app():
 
 
 def make_redis():
-    redis = Redis.from_url('redis://redis:6379/0')
+    redis = StrictRedis.from_url('redis://redis:6379/0')
     # For our SSE endoint, we want to be notified of all changes to hashmaps
     # with a given key (i.e. when a job is updated)
     redis.config_set('notify-keyspace-events', 'Kh')
