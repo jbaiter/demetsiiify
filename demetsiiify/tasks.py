@@ -126,7 +126,8 @@ def import_mets_job(mets_url, collection_id=None, concurrency=2):
         db_manifest = Manifest.get(db_manifest.id)
         identifiers = [Identifier(id_, type, db_manifest.id)
                        for type, id_ in doc.identifiers.items()]
-        Identifier.save(*identifiers)
+        if identifiers:
+            Identifier.save(*identifiers)
         if collection_id:
             collection = Collection.get(collection_id)
             if collection is None:
