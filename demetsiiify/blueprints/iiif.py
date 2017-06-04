@@ -55,10 +55,8 @@ def get_collection(collection_id='index', page_id='top'):
         manifest_pagination = collection.manifests.paginate(
             page=page_num, per_page=per_page)
         label = collection.label
-        if page_num == 1:
-            subcollections = collection.child_collections.all()
     return jsonify(make_manifest_collection(
-        manifest_pagination, subcollections, label, collection_id, page_num))
+        manifest_pagination, label, collection_id, page_num))
 
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')

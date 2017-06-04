@@ -54,16 +54,14 @@ def recent():
 def browse():
     pagination = Manifest.query.paginate(
         page=1, per_page=current_app.config['ITEMS_PER_PAGE'])
-    subcollections = (
-        Collection.query.filter_by(parent_collection=None).all())
     label = "All manifests available at {}".format(
         current_app.config['SERVER_NAME'])
     return render_template(
         'browse.html',
         root_collection=make_manifest_collection(
-            pagination, subcollections, label, 'index', 'top'),
+            pagination, label, 'index', 'top'),
         initial_page=make_manifest_collection(
-            pagination, subcollections, label, 'index', 'p1'))
+            pagination, label, 'index', 'p1'))
 
 
 @view.route('/about')
