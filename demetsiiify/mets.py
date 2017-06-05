@@ -12,12 +12,14 @@ from requests.packages.urllib3 import Retry
 from . import models
 from .iiif import make_label
 
+#: Namespaces that are going to be used during XML parsing
 NAMESPACES = {
     'mets': 'http://www.loc.gov/METS/',
     'mods': 'http://www.loc.gov/mods/v3',
     'dv': 'http://dfg-viewer.de/',
     'xlink': 'http://www.w3.org/1999/xlink'}
 
+#: Valid mime types for JPEG images
 # For some reason, some libraries use the wrong MIME type...
 JPEG_MIMES = ('image/jpeg', 'image/jpg')
 

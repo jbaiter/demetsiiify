@@ -47,7 +47,7 @@
         to the original image resources on the libraries' servers. The only
         information it stores are the generated IIIF manifests and information
         (dimensions, format) about the available images in each manifest.
-        Under the hood this works by offering <a href="TODO">Level 0</a>
+        Under the hood this works by offering <a href="http://iiif.io/api/image/2.0/compliance/">Level 0</a>
         <tt>info.json</tt> files for each page that lists the available sizes
         for a given page. If the client then makes a request to the IIIF endpoint
         corresponding to that size, it will be redirected to the actual image
@@ -69,41 +69,16 @@
         See the above question. If you have an API that allows for the querying
         of the image dimensions without grabbing the actual image,
         <a href="mailto:johannes.baiter@gmail.com">get in touch</a>, maybe
-        we can do something about it.
+        we can do something about it (or submit a pull request!).
       </dd>
-      <dt>Your metadata is all wrong and incomplete!</dt>
+      <dt>I work for a library, can we use this for our production services?</dt>
       <dd>
-        I tried to use most of the information avaible from the METS files.
-        If I made a mistake in that process, please open an issue on GitHub.
-        Unfortunately the whole metadata topic is notoriously tricky to get
-        right, with a number of differing views on what constitutes "correct"
-        and "complete" metadata. I'm with <a href="TODO">Rob Sanderson</a>
-        on that topic:
-        <blockquote class="twitter-tweet" data-lang="en">
-          <p lang="en" dir="ltr">
-            You can have Linked Open Data that is:<br>
-            * Usable<br>
-            * Complete<br>
-            *Accurate<br><br>
-            Pick one.<br><br>
-            And pick Usable.
-          </p>
-          &mdash; Rob Sanderson (@azaroth42)
-          <a href="https://twitter.com/azaroth42/status/804132088450465792">December 1, 2016</a>
-        </blockquote>
-      </dd>
-      <dt>I'm from a library, can we use this for our production services?</dt>
-      <dd>
-        Absolutely! If you're fine with the manifests being hosted elsewhere,
+        Absolutely! If you're fine with the data being hosted elsewhere,
         you can just use the manifests on this server. If you want to self-host
         the application, it is available at GitHub under an AGPL license. If you
-        want different licensing terms or proprietary customiations, please get
+        want different licensing terms or proprietary customisations, please get
         in touch and I'm sure we can work something out.
       </dd>
     </dl>
 </div>
-{% endblock %}
-
-{% block footer %}
-<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 {% endblock %}
