@@ -328,7 +328,7 @@ def make_manifest_collection(pagination, label, collection_id, page_num=None):
                 iiif_coll = make_manifest_collection(
                     manifests_pagination, label, cid, None)
                 collection['collections'].append(iiif_coll)
-        if not collection['collections']:
+        if 'collections' in collection and not collection['collections']:
             del collection['collections']
         if pagination.has_next:
             collection['next'] = url_for(
