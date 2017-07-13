@@ -346,7 +346,7 @@ def image_info(id_, location, mimetype, jpeg_only=False, about_url=None):
     ses.mount('https://', adapter)
     resp = None
     try:
-        # We open it streaming, since we don't neccessarily have to read
+        # We open it streaming, since we don't necessarily have to read
         # the complete response (e.g. if the MIME type is unsuitable)
         resp = ses.get(location, allow_redirects=True, stream=True,
                        timeout=30)
