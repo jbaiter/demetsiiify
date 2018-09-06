@@ -2,8 +2,8 @@
 Flask
 Flask-SQLAlchemy
 Flask-Script
-flask-autodoc
-flask-migrate
+Flask-Autodoc
+Flask-Migrate
 gevent
 gunicorn
 
