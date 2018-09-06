@@ -11,7 +11,9 @@ gunicorn
 shortuuid
 iiif-prezi
 lxml
-Pillow
+# Current releases of Pillow don't work with py3dns,
+# so let py3dns get the right Pillow version.
+#Pillow
 requests
 
 # Persistence
