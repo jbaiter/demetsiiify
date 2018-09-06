@@ -1,5 +1,6 @@
 # For the HTTP-API
-Flask
+# TODO: Hack, use Flask before 1.0 to work with broken Flask-Autodoc-0.1.2.
+Flask<1.0
 Flask-SQLAlchemy
 Flask-Script
 Flask-Autodoc
