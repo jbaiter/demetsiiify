@@ -1,9 +1,10 @@
 # For the HTTP-API
-Flask
+# TODO: Hack, use Flask before 1.0 to work with broken Flask-Autodoc-0.1.2.
+Flask<1.0
 Flask-SQLAlchemy
 Flask-Script
-flask-autodoc
-flask-migrate
+Flask-Autodoc
+Flask-Migrate
 gevent
 gunicorn
 
@@ -11,11 +12,13 @@ gunicorn
 shortuuid
 iiif-prezi
 lxml
-Pillow
+# Current releases of Pillow don't work with py3dns,
+# so let py3dns get the right Pillow version.
+#Pillow
 requests
 
 # Persistence
-psycopg2
+psycopg2-binary
 redis
 alembic
 
