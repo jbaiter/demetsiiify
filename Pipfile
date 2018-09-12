@@ -1,0 +1,34 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[dev-packages]
+pytest = "*"
+pytest-datadir = "*"
+mypy = "*"
+prospector = "*"
+"pep257" = "*"
+
+[packages]
+gevent = "*"
+gunicorn = "*"
+shortuuid = "*"
+iiif-prezi = "*"
+lxml = "*"
+requests = "*"
+"psycopg2-binary" = "*"
+redis = "*"
+alembic = "*"
+rq = "*"
+"py3dns" = "*"
+ipython = "*"
+Flask = "<1.0"  # Needed so that autodoc works :-/
+Flask-SQLAlchemy = "*"
+Flask-Script = "*"
+Flask-Autodoc = "*"
+Flask-Migrate = "*"
+validate_email = "*"
+
+[requires]
+python_version = "3.7"
