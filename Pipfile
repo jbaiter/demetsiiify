@@ -9,6 +9,7 @@ pytest-datadir = "*"
 mypy = "*"
 prospector = "*"
 "pep257" = "*"
+pdbpp = "*"
 
 [packages]
 gevent = "*"

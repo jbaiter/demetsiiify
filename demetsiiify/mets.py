@@ -23,17 +23,6 @@ JPEG_MIMES = ('image/jpeg', 'image/jpg')
 
 # Utility datatypes
 @dataclass
-class PageInfo:
-    """All the information about a page in a METS document."""
-
-    ident: str
-    label: str
-    image_ident: Optional[str] = None
-    width: Optional[int] = None
-    height: Optional[int] = None
-
-
-@dataclass
 class ImageInfo:
     """Metadata about an image."""
 
@@ -48,8 +37,20 @@ class ImageInfo:
 class PhysicalItem:
     """A METS physical item (most often a page)."""
 
+    ident: str
     label: str
     files: Iterable[ImageInfo]
+    image_ident: Optional[str] = None
+
+    @property
+    def max_dimensions(self):
+        """Maximum dimensions in pixels."""
+        return max((f.width, f.height) for f in self.files)
+
+    @property
+    def min_dimensions(self):
+        """Minimum dimensions in pixels."""
+        return min((f.width, f.height) for f in self.files)
 
 
 @dataclass
@@ -61,16 +62,6 @@ class TocEntry:
     logical_id: str
     label: str
     type: str
-
-
-@dataclass
-class MetsPreview:
-    """A short preview of a METS document with just basic metadata."""
-
-    mets_url: str
-    label: str
-    attribution: Mapping[str, str]
-    thumbnail: Optional[str] = None
 
 
 class MetsParseError(Exception):
@@ -129,13 +120,6 @@ class MetsDocument:
         self.files = self._read_files()
         self.physical_items = self._read_physical_items()
         self.toc_entries = self._read_toc_entries()
-
-    @property
-    def pages(self) -> Iterable[PageInfo]:
-        """Return the pages contained in the METS document."""
-        for ident, phys_itm in self.physical_items.items():
-            width, height = max((f.width, f.height) for f in phys_itm.files)
-            yield PageInfo(ident, phys_itm.label, width=width, height=height)
 
     def _xpath(self, xpath: str,
                elem: etree.Element = None) -> List[etree.Element]:
@@ -302,7 +286,7 @@ class MetsDocument:
                 for ptr in self._findall("./mets:fptr", page_elem)
                 if ptr.get('FILEID') in self.files]
             physical_items[page_id] = PhysicalItem(
-                label, [f for f in files if f is not None])
+                page_id, label, [f for f in files if f is not None])
         return physical_items
 
     def _parse_tocentry(self, toc_elem: etree.Element,
