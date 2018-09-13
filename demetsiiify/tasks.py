@@ -1,8 +1,7 @@
-import os.path
-import smtplib
+"""Background tasks."""
 import time
 from collections import deque, OrderedDict
-from email.message import EmailMessage
+from pathlib import Path
 
 import lxml.etree as ET
 import requests
@@ -17,15 +16,8 @@ from . import make_queues, make_redis
 from .models import db, Manifest, IIIFImage, Image, Identifier, Collection
 
 
-EMAIL_TEMPLATE = """
-The IIIF manifests for your METS files are now available for viewing at the
-following addresses:
-
-{}
-"""
-
-
 def get_redis():
+    """Get the global redis singleton."""
     if not hasattr(g, 'redis'):
         g.redis = make_redis()
     return g.redis
@@ -72,17 +64,6 @@ def _make_image_maps(doc):
     return iiif_map, thumbs_map
 
 
-def _notify_if_last(job_id, manifest_id):
-    redis = get_redis()
-    recipients = redis.smembers('recipients.{}'.format(job_id))
-    for recipient in recipients:
-        redis.srem('notifications.{}.jobs'.format(recipient), job_id)
-        redis.sadd('notifications.{}.manifests'.format(recipient),
-                   manifest_id)
-        notify_email(recipient.decode('utf8'))
-    redis.delete('recipients.{}'.format(job_id))
-
-
 def import_mets_job(mets_url, collection_id=None, concurrency=2):
     job = get_current_job()
     try:
@@ -90,9 +71,9 @@ def import_mets_job(mets_url, collection_id=None, concurrency=2):
         tree = ET.fromstring(xml)
         doc = mets.MetsDocument(tree, url=mets_url)
         if current_app.config['DUMP_METS']:
-            xml_path = os.path.join(current_app.config['DUMP_METS'],
-                                    doc.primary_id.replace('/', '_') + ".xml")
-            with open(xml_path, "wb") as fp:
+            xml_path = (Path(current_app.config['DUMP_METS']) /
+                        doc.primary_id.replace('/', '_') + ".xml")
+            with xml_path.open('wb') as fp:
                 fp.write(ET.tostring(tree, pretty_print=True))
 
         try:
@@ -140,38 +121,10 @@ def import_mets_job(mets_url, collection_id=None, concurrency=2):
         # orphaned images.
         IIIFImage.delete_orphaned()
         db.session.commit()
-        if job:
-            _notify_if_last(job.id, manifest['@id'])
         return manifest['@id']
     except Exception as e:
         db.session.rollback()
         raise e
-
-
-# NOTE: This is not actually a task, but since it depends on the tasks,
-#       it lives in the same module...
-def notify_email(recipient):
-    redis = get_redis()
-    jobs_key = 'notifications.{}.jobs'.format(recipient)
-    num_outstanding_jobs = redis.scard(jobs_key)
-    if num_outstanding_jobs > 0:
-        return
-
-    manifests_key = 'notifications.{}.manifests'.format(recipient)
-    manifest_ids = redis.smembers(manifests_key)
-    redis.delete(jobs_key, manifests_key)
-
-    msg = EmailMessage()
-    msg['Subject'] = 'Your IIIF manifests are ready'
-    msg['From'] = 'notifications@{}'.format(current_app.config['SERVER_NAME'])
-    msg['To'] = recipient
-    msg.set_content(EMAIL_TEMPLATE.format("\n".join(
-        url_for('view.view_endpoint', manifest_id=manifest_id, _external=True)
-        for manifest_id in manifest_ids)))
-    with smtplib.SMTP(current_app.config['SMTP_SERVER']) as s:
-        s.login(current_app.config['SMTP_USER'],
-                current_app.config['SMTP_PASSWORD'])
-        s.send_message(msg, to_addrs=[recipient])
 
 
 def import_from_oai(oai_endpoint, since=None):
