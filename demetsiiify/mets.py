@@ -16,10 +16,6 @@ NAMESPACES = {
     'dv': 'http://dfg-viewer.de/',
     'xlink': 'http://www.w3.org/1999/xlink'}
 
-#: Valid mime types for JPEG images
-# For some reason, some libraries use the wrong MIME type...
-JPEG_MIMES = ('image/jpeg', 'image/jpg')
-
 
 # Utility datatypes
 @dataclass
@@ -28,7 +24,7 @@ class ImageInfo:
 
     id: str
     url: str
-    mimetype: str
+    mimetype: Optional[str] = None
     width: Optional[int] = None
     height: Optional[int] = None
 
@@ -89,11 +85,6 @@ class MetsDocument:
     toc_entries: Iterable[TocEntry]
     metadata: dict
     files: Dict[str, ImageInfo]
-
-    @classmethod
-    def from_url(cls, mets_url: str) -> MetsDocument:
-        """Parse a METS document located at the  URL."""
-        return MetsDocument(mets_tree=etree.parse(mets_url), url=mets_url)
 
     def __init__(self, mets_tree: etree.ElementTree, url: str = None,
                  primary_id: str = None) -> None:

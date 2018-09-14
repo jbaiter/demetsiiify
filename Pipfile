@@ -10,6 +10,7 @@ mypy = "*"
 prospector = "*"
 "pep257" = "*"
 pdbpp = "*"
+requests-mock = "*"
 
 [packages]
 gevent = "*"

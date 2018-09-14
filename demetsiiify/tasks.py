@@ -1,19 +1,21 @@
 """Background tasks."""
 import time
-from collections import deque, OrderedDict
+from collections import deque
 from pathlib import Path
+from typing import Deque, Optional
 
 import lxml.etree as ET
 import requests
-import shortuuid
-from flask import current_app, g, url_for
-from rq import get_current_job
+from flask import current_app, g
+from rq import get_current_job, Job
 
-from . import mets
-from . import oai
-from . import iiif
 from . import make_queues, make_redis
-from .models import db, Manifest, IIIFImage, Image, Identifier, Collection
+from .iiif import make_manifest
+from .imgfetch import add_image_dimensions, ImageDownloadError
+from .mets import MetsDocument
+from .models import (db, Manifest, IIIFImage, Image as DbImage,
+                     Identifier, Collection)
+from .oai import OaiRepository
 
 
 def get_redis():
@@ -23,84 +25,77 @@ def get_redis():
     return g.redis
 
 
+#: Queue singletons
 queue, oai_queue = make_queues(get_redis(), 'tasks', 'oai_imports')
 
 
-def _read_files(doc, job=None, concurrency=None):
-    times = deque(maxlen=50)
+def fetch_image_dimensions(doc: MetsDocument, job: Optional[Job] = None,
+                           concurrency: int = 2) -> None:
+    """Fetch missing image dimensions and report on progress."""
+    times: Deque[float] = deque(maxlen=50)
     start_time = time.time()
-    for idx, total in doc.read_files(jpeg_only=True, yield_progress=True,
-                                     concurrency=concurrency):
+    for idx, total in add_image_dimensions(
+            doc.files.values(), jpeg_only=True, concurrency=concurrency):
         duration = time.time() - start_time
         times.append(duration)
         if job:
-            job.meta.update(dict(
-                current_image=idx,
-                total_images=total,
-                eta=(sum(times)/len(times)) * (total - idx)))
+            eta = (sum(times) / len(times)) * (total - idx)
+            job.meta.update(dict(current_image=idx, total_images=total,
+                                 eta=eta))
             job.save()
         start_time = time.time()
 
 
-def _make_image_maps(doc):
-    iiif_map = OrderedDict()
-    thumbs_map = {}
-    for phys_id, itm in doc.physical_items.items():
-        image_ident = shortuuid.uuid()
-        largest_image = max(itm.files, key=lambda f: f.height)
-        smallest_image = min(itm.files, key=lambda f: f.height)
-        iiif_info = iiif.make_info_data(
-            image_ident, [(f.width, f.height) for f in itm.files])
-        db_iiif_img = IIIFImage(iiif_info, id=image_ident)
-        IIIFImage.save(db_iiif_img)
-        for f in itm.files:
-            db_img = Image(f.url, f.width, f.height, f.mimetype,
-                           image_ident)
-            Image.save(db_img)
-        iiif_map[phys_id] = (image_ident, itm.label,
-                             (largest_image.width, largest_image.height))
-        thumbs_map[image_ident] = (smallest_image.width,
-                                   smallest_image.height)
-    return iiif_map, thumbs_map
-
-
-def import_mets_job(mets_url, collection_id=None, concurrency=2):
+def import_mets_job(mets_url: str, collection_id: Optional[str] = None,
+                    concurrency: int = 2) -> str:
+    """Import job."""
     job = get_current_job()
+    about_url = "{}://{}/about".format(
+        current_app.config['PREFERRED_URL_SCHEME'],
+        current_app.config['SERVER_NAME'])
     try:
         xml = requests.get(mets_url, allow_redirects=True).content
         tree = ET.fromstring(xml)
-        doc = mets.MetsDocument(tree, url=mets_url)
+        doc = MetsDocument(tree, url=mets_url)
         if current_app.config['DUMP_METS']:
             xml_path = (Path(current_app.config['DUMP_METS']) /
-                        doc.primary_id.replace('/', '_') + ".xml")
+                        (doc.primary_id.replace('/', '_') + ".xml"))
             with xml_path.open('wb') as fp:
                 fp.write(ET.tostring(tree, pretty_print=True))
 
+        # Fetch known image dimensions from database
+        for file in doc.files.values():
+            db_info = DbImage.by_url(file.url)
+            if db_info is None:
+                continue
+            file.width = db_info.width
+            file.height = db_info.height
+            file.mimetype = db_info.mimetype
         try:
-            _read_files(doc, job, concurrency)
+            fetch_image_dimensions(doc, job, concurrency)
         except Exception as e:
-            # Write images that could be read to database, as to a void
+            # Write images that could be read to database, as to avoid
             # a costly re-scrape when the bug(?) gets fixed
-            db_images = [Image(f.url, f.width, f.height, f.mimetype)
-                         for f in doc.files.values()]
-            Image.save(*db_images)
+            db_images = [DbImage(f.url, f.width, f.height, f.mimetype)
+                         for f in doc.files.values()
+                         if f.width is not None and f.height is not None]
+            DbImage.save(*db_images)
             db.session.commit()
             raise e
         if not doc.files:
-            raise mets.MetsImportError(
+            raise ImageDownloadError(
                 "METS at {} does not reference any JPEG images"
                 .format(mets_url))
-        doc.read_physical_items()
-        doc.read_toc_entries()
-        doc.read_metadata()
 
         existing_manifest = Manifest.by_origin(mets_url)
         if existing_manifest:
             manifest_id = existing_manifest.id
         else:
             manifest_id = doc.primary_id
-        iiif_map, thumbs_map = _make_image_maps(doc)
-        manifest = iiif.make_manifest(manifest_id, doc, iiif_map, thumbs_map)
+        base_url = "{}://{}".format(
+            current_app.config['PREFERRED_URL_SCHEME'],
+            current_app.config['SERVER_NAME'])
+        manifest = make_manifest(manifest_id, doc, base_url=base_url)
         db_manifest = Manifest(mets_url, manifest, id=manifest_id,
                                label=manifest['label'])
         Manifest.save(db_manifest)
@@ -128,6 +123,7 @@ def import_mets_job(mets_url, collection_id=None, concurrency=2):
 
 
 def import_from_oai(oai_endpoint, since=None):
+    """Import new METS documents from an OAI endpoint."""
     repo = oai.OaiRepository(oai_endpoint)
     sets = dict(repo.list_sets())
 
