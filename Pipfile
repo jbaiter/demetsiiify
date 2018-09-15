@@ -34,3 +34,8 @@ validate_email = "*"
 
 [requires]
 python_version = "3.7"
+
+[scripts]
+tests = "py.test tests"
+worker = "python3 manage.py worker"
+webapp = "gunicorn --reload --worker-class gevent -w 4 -b 0.0.0.0:5000 manage:app"

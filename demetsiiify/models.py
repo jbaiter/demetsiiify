@@ -337,6 +337,20 @@ class Collection(db.Model):
     def get(cls, id):
         return cls.query.filter_by(id=id).first()
 
+    @classmethod
+    def get_child_collection_counts(cls, collection_id=None):
+        cursor = db.session.execute(sql.text(
+            'SELECT c.id, c.label, '
+            '       count(cm.manifest_id) as num_manifests '
+            '  FROM collection_manifest AS cm '
+            '  JOIN collection AS c '
+            '    ON c.surrogate_id = cm.collection_id '
+            '       AND c.parent_collection_id = :parent_id '
+            '  GROUP BY c.id, c.label '
+            '  ORDER BY c.id'.format(parent_query)),
+            dict(parent_id=collection_id))
+        return cursor.fetchall()
+
 
 class OaiRepository(db.Model):
     id = db.Column(db.Integer, primary_key=True)

@@ -1,8 +1,7 @@
-FROM python:3.5
+FROM python:3.7
 
 ADD . /code
 WORKDIR /code
 
-RUN\
-    pip install -U pip wheel &&\
-    pip install -r requirements.txt
+RUN pip install -U pip wheel pipenv && \
+    pipenv install

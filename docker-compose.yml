@@ -19,7 +19,7 @@ services:
       SMTP_USER:
       SMTP_SERVER:
       SMTP_PASSWORD:
-    command: 'python manage.py worker'
+    command: 'pipenv run worker'
 
   webapp:
     build:
@@ -34,4 +34,4 @@ services:
     links:
       - postgres
       - redis
-    command: 'gunicorn --reload --worker-class gevent -w 4 -b 0.0.0.0:5000 manage:app'
+    command: 'pipenv run webapp'
