@@ -56,12 +56,15 @@ def browse():
         page=1, per_page=current_app.config['ITEMS_PER_PAGE'])
     label = "All manifests available at {}".format(
         current_app.config['SERVER_NAME'])
+    base_url = "{}://{}".format(
+        current_app.config['PREFERRED_URL_SCHEME'],
+        current_app.config['SERVER_NAME'])
     return render_template(
         'browse.html',
         root_collection=make_manifest_collection(
-            pagination, label, 'index', 'top'),
+            pagination, label, 'index', 'top', base_url=base_url),
         initial_page=make_manifest_collection(
-            pagination, label, 'index', 'p1'))
+            pagination, label, 'index', 'p1', base_url=base_url))
 
 
 @view.route('/about')

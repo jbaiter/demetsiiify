@@ -7,7 +7,8 @@ from typing import Deque, Optional
 import lxml.etree as ET
 import requests
 from flask import current_app, g
-from rq import get_current_job, Job
+from rq import get_current_job
+from rq.job import Job
 
 from . import make_queues, make_redis
 from .iiif import make_manifest

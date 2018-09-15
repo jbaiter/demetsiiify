@@ -1,7 +1,8 @@
 """IIIF image and presentation logic."""
 import logging
 from itertools import chain
-from typing import Dict, Iterable, List, Mapping, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Tuple
+from urllib.parse import urlencode
 
 import shortuuid
 from flask_sqlalchemy import Pagination
@@ -124,8 +125,7 @@ def _make_empty_manifest(ident: str, label: str, base_url: str) -> Manifest:
     :param ident:       Identifier for the manifest, that is not a URL, but
                         the `<ident>` in `https://..../<ident>/manifest`
     :param label:       Label for the manifest
-    :param base_url:    Root URL for the application,
-                        e.g. `https://example.com`
+    :param base_url:    Root URL for the application, e.g. https://example.com
     :returns:           The empty manifest
     """
     manifest_factory = ManifestFactory()
@@ -199,56 +199,45 @@ def make_manifest(ident: str, mets_doc: MetsDocument,
     return manifest.toJSON(top=True)
 
 
-def make_manifest_collection(pagination, label, collection_id, per_page,
-                             page_num=None):
+def make_manifest_collection(
+        pagination: Pagination, label: str, collection_id: str,
+        per_page: int, base_url: str, page_num: Optional[int] = None,
+        coll_counts: Optional[Tuple[int, str, int]] = None) -> dict:
     """Generate a IIIF collection.
 
     :param pagination:      Pagination query for all manifests of the
                             collection
-    :type pagination:       :py:class:`flask_sqlalchemy.Pagination`
     :param label:           Label for the collection
-    :type label:            str
     :param collection_id:   Identifier of the collection
-    :type collection_id:    str
+    :param base_url:        Root URL for the application,
+                            e.g. https://example.com
     :param page_num:        Number of the collection page to display
-    :type page_num:         int
     :returns:               The generated IIIF collection
-    :rtype:                 dict
     """
+    collection_url = f'{base_url}/iiif/collection/{collection_id}'
     if page_num is not None:
         page_id = 'p{}'.format(page_num)
     else:
         page_id = 'top'
     collection = {
         "@context": "http://iiif.io/api/presentation/2/context.json",
-        "@id": url_for('iiif.get_collection', collection_id=collection_id,
-                       page_id=page_id, _external=True),
+        "@id": f'{base_url}/iiif/collection/{collection_id}/{page_id}',
         "@type": "sc:Collection",
         "total": pagination.total,
         "label": label,
     }
-    if collection_id != 'index':
-        collection['within'] = url_for(
-            'iiif.get_collection', collection_id='index', page_id='top',
-            _external=True)
     if page_id == 'top':
         collection.update({
-            "first": url_for(
-                'iiif.get_collection', collection_id=collection_id,
-                page_id='p1', _external=True),
-            "last": url_for(
-                'iiif.get_collection', collection_id=collection_id,
-                page_id='p{}'.format(pagination.pages), _external=True)
+            "first": f'{collection_url}/p1',
+            "last": f'{collection_url}/p{pagination.pages}'
         })
     else:
+        if collection_id != 'index':
+            collection['within'] = f'{collection_url}/top'
         collection.update({
-            'within': url_for(
-                'iiif.get_collection', collection_id=collection_id,
-                page_id='top', _external=True),
             'startIndex': (pagination.page - 1) * pagination.per_page,
             'manifests': [{
-                '@id': url_for('iiif.get_manifest', manif_id=m.id,
-                               _external=True),
+                '@id': f'{base_url}/iiif/{m.id}/manifest',
                 '@type': 'sc:Manifest',
                 'label': m.label,
                 'attribution': m.manifest['attribution'],
@@ -260,8 +249,6 @@ def make_manifest_collection(pagination, label, collection_id, per_page,
         })
         if page_num == 1:
             collection['collections'] = []
-            # FIXME: Get this outside of the IIIF logic
-            coll_counts = Collection.get_child_collection_counts(collection_id)
             for cid, label, num_manifs in coll_counts:
                 if not num_manifs:
                     continue
@@ -276,29 +263,29 @@ def make_manifest_collection(pagination, label, collection_id, per_page,
         if 'collections' in collection and not collection['collections']:
             del collection['collections']
         if pagination.has_next:
-            collection['next'] = url_for(
-                'iiif.get_collection', collection_id=collection_id,
-                page_id='p{}'.format(pagination.next_num), _external=True)
+            collection['next'] = f'{collection_url}/p{pagination.next_num}'
         if pagination.has_prev:
-            collection['prev'] = url_for(
-                'iiif.get_collection', collection_id=collection_id,
-                page_id='p{}'.format(pagination.prev_num), _external=True)
+            collection['prev'] = f'{collection_url}/p{pagination.prev_num}'
     return collection
 
 
-def make_annotation_list(pagination, request_url, request_args):
+def make_annotation_list(pagination: Pagination, request_url: str,
+                         request_args: dict, base_url: str) -> dict:
     """Create a IIIF annotation list.
 
     :param pagination:      Pagination of annotations
-    :type pagination:       :py:class:`flask_sqlalchemy.Pagination`
     :param request_url:     Request URL for the annotation list, will be its
                             IIIF identifier
-    :type request_url:      str
     :param request_args:    Request arguments for the annotation list request
-    :type request_args:     dict
+    :param base_url:    Root URL for the application, e.g. https://example.com
     :returns:               The IIIF annotation list
-    :rtype:                 dict
     """
+    def _make_link(page_no: int) -> str:
+        params = urlencode({'p': page_no, **request_args})
+        return f'{base_url}/iiif/annotation?{params}'
+
+    params_first = urlencode({k: v for k, v in request_args.items()
+                           if k != 'p'})
     out = {
         '@context': 'http://iiif.io/api/presentation/2/context.json',
         '@id': request_url,
@@ -306,13 +293,8 @@ def make_annotation_list(pagination, request_url, request_args):
         'within': {
             '@type': 'sc:Layer',
             'total': pagination.total,
-            'first': url_for('iiif.search_annotations', p=1, _external=True,
-                             **{k: v for k, v in request_args.items()
-                                if k != 'p'}),
-            'last': url_for('iiif.search_annotations', p=pagination.pages,
-                            _external=True,
-                            **{k: v for k, v in request_args.items()
-                               if k != 'p'}),
+            'first': _make_link(1),
+            'last': _make_link(pagination.pages),
             'ignored': [k for k in request_args
                         if k not in ('q', 'motivation', 'date', 'user', 'p')]
         },
@@ -320,15 +302,7 @@ def make_annotation_list(pagination, request_url, request_args):
         'resources': [a.annotation for a in pagination.items],
     }
     if pagination.has_next:
-        out['next'] = url_for(
-            'iiif.search_annotations', p=pagination.next_num,
-            _external=True,
-            **{k: v for k, v in request_args.items()
-                if k != 'p'})
+        out['next'] = _make_link(pagination.next_num)
     if pagination.has_prev:
-        out['next'] = url_for(
-            'iiif.search_annotations', p=pagination.prev_num,
-            _external=True,
-            **{k: v for k, v in request_args.items()
-                if k != 'p'})
+        out['next'] = _make_link(pagination.prev_num)
     return out

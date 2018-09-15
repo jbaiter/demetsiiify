@@ -39,6 +39,9 @@ def get_collection(collection_id='index', page_id='top'):
         page_num = None
     else:
         page_num = int(page_id[1:])
+    base_url = "{}://{}".format(
+        current_app.config['PREFERRED_URL_SCHEME'],
+        current_app.config['SERVER_NAME'])
     per_page = current_app.config['ITEMS_PER_PAGE']
     if collection_id == 'index':
         manifest_pagination = Manifest.query.paginate(
@@ -55,8 +58,11 @@ def get_collection(collection_id='index', page_id='top'):
         manifest_pagination = collection.manifests.paginate(
             page=page_num, per_page=per_page)
         label = collection.label
+    if page_num == 1:
+        coll_counts = Collection.get_child_collection_counts(collection_id)
     return jsonify(make_manifest_collection(
-        manifest_pagination, label, collection_id, page_num))
+        manifest_pagination, label, collection_id, base_url=base_url,
+        page_num=page_num, coll_counts=coll_counts))
 
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')
@@ -221,11 +227,15 @@ def search_annotations():
     if 'date' in request.args:
         search_args['date_ranges'] = [
             r.split('/') for r in request.args['date'].split(' ')]
+    base_url = "{}://{}".format(
+        current_app.config['PREFERRED_URL_SCHEME'],
+        current_app.config['SERVER_NAME'])
     page_num = int(request.args.get('p', '1'))
     limit = int(request.args.get('limit', '100'))
     pagination = Annotation.search(**search_args).paginate(
         page=page_num, per_page=limit, error_out=False)
-    return jsonify(make_annotation_list(pagination, request.url, request.args))
+    return jsonify(make_annotation_list(
+        pagination, request.url, request.args, base_url))
 
 
 @iiif.route('/iiif/annotation', methods=['POST'])
