@@ -7,7 +7,6 @@ import requests
 from flask import (Blueprint, abort, current_app, jsonify, redirect, request,
                    url_for)
 from rq import Connection, get_failed_queue
-from validate_email import validate_email
 
 from .. import mets
 from ..extensions import auto
@@ -225,20 +224,3 @@ def sse_stream(task_id):
     resp.headers['X-Accel-Buffering'] = 'no'
     resp.headers['Cache-Control'] = 'no-cache'
     return resp
-
-
-@api.route('/api/tasks/notify', methods=['POST'])
-def register_email_notification():
-    recipient = request.json['recipient']
-    job_ids = request.json['jobs']
-    if not validate_email(recipient, verify=True):
-        return jsonify({'error': 'The email passed is not valid!'}), 400
-    redis = get_redis()
-    jobs_key = 'notifications.{}.jobs'.format(recipient)
-    batch = redis.pipeline()
-    batch.sadd(jobs_key, *job_ids)
-    for job_id in job_ids:
-        batch.sadd('recipients.{}'.format(job_id), recipient)
-    batch.execute()
-    return jsonify({'jobs': [e.decode('utf8')
-                             for e in redis.smembers(jobs_key)]})

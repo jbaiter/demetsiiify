@@ -8,7 +8,7 @@ import shortuuid
 from flask_sqlalchemy import Pagination
 from iiif_prezi.factory import Manifest, ManifestFactory
 
-from .mets import MetsDocument, TocEntry
+from .mets import MetsDocument, PhysicalItem, TocEntry
 
 
 #: Localized labels for metadata values
@@ -153,22 +153,19 @@ def _fill_manifest_metadata(manifest: Manifest, mets_metadata: dict) -> None:
     manifest.license = LICENSE_MAP.get(mets_metadata.get('license', ''), '')
 
 
-def make_image_infos(doc: MetsDocument,
-                     base_url: str) -> Mapping[str, dict]:
+def make_image_info(itm: PhysicalItem, base_url: str) -> dict:
     """Create info.json data structures for all physical items."""
-    mapping = {}
-    for phys_id, itm in doc.physical_items.items():
-        sizes = [(f.width, f.height) for f in itm.files]
-        max_width, max_height = max(sizes)
-        mapping[phys_id] = {
-            '@context': 'http://iiif.io/api/image/2/context.json',
-            '@id': 'f{base_url}/iiif/image/{itm.image_ident}',
-            'protocol': 'http://iiif.io/api/image',
-            'profile': ['http://iiif.io/api/image/2/level0.json'],
-            'width': max_width,
-            'height': max_height,
-            'sizes': [{'width': w, 'height': h} for w, h in sizes]}
-    return mapping
+    sizes = [(f.width, f.height) for f in itm.files
+             if f.width is not None and f.height is not None]
+    max_width, max_height = max(sizes)
+    return {
+        '@context': 'http://iiif.io/api/image/2/context.json',
+        '@id': f'{base_url}/iiif/image/{itm.image_ident}',
+        'protocol': 'http://iiif.io/api/image',
+        'profile': ['http://iiif.io/api/image/2/level0.json'],
+        'width': max_width,
+        'height': max_height,
+        'sizes': [{'width': w, 'height': h} for w, h in sorted(sizes)]}
 
 
 def make_manifest(ident: str, mets_doc: MetsDocument,
@@ -192,9 +189,9 @@ def make_manifest(ident: str, mets_doc: MetsDocument,
         canvas.width, canvas.height = page.max_dimensions
         img.set_hw(canvas.height, canvas.width)
         thumb_w, thumb_h = page.min_dimensions
-        canvas.thumbnail = manifest._factory.image(
-            page.image_ident, iiif=True, size=f'{thumb_w},{thumb_h}')
-        canvas.thumbnail.set_hw(thumb_w, thumb_h)
+        canvas.thumbnail = (
+            f'{base_url}/iiif/image/{page.image_ident}'
+            f'/full/{thumb_w},{thumb_h}/0/default.jpg')
     _add_toc_ranges(manifest, mets_doc.toc_entries)
     return manifest.toJSON(top=True)
 

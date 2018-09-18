@@ -41,6 +41,8 @@ def _complete_image_info(
     ses.mount('http://', http_adapter)
     ses.mount('https://', http_adapter)
     resp = None
+    if file.mimetype not in JPEG_MIMES:
+        return
     try:
         # We open it streaming, since we don't necessarily have to read
         # the complete response (e.g. if the MIME type is unsuitable)
@@ -60,7 +62,7 @@ def _complete_image_info(
     # what's actually on the server
     server_mime = resp.headers['Content-Type'].split(';')[0]
     if jpeg_only and server_mime not in JPEG_MIMES:
-        return None
+        return
     server_mime = server_mime.replace('jpg', 'jpeg')
     try:
         # TODO: Log a warning if mimetype and server_mime mismatch

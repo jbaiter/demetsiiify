@@ -147,7 +147,7 @@ class IIIFImage(db.Model):
         self.id = id or shortuuid.uuid()
         self.info = info
 
-    def get_image_url(self, format_, width=None, height=None):
+    def get_image_url(self, format_=None, width=None, height=None):
         query = {'format': format_}
         if width:
             query['width'] = width

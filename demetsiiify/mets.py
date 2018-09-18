@@ -5,6 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Mapping, Optional
 
+import requests
 import shortuuid
 from lxml import etree
 
@@ -109,6 +110,9 @@ class MetsDocument:
         self.primary_id = primary_id or self._get_unique_identifier()
         self.metadata = self._read_metadata()
         self.files = self._read_files()
+        if not self.files:
+            raise MetsParseError(
+                f"METS at {self.url} does not reference any JPEG images")
         self.physical_items = self._read_physical_items()
         self.toc_entries = self._read_toc_entries()
 
@@ -252,7 +256,8 @@ class MetsDocument:
         img_specs = (self._get_image_specs(e)
                      for e in self._findall(".//mets:file"))
         return {info.id: info for info in img_specs
-                if info.url and info.url.startswith('http')}
+                if info.url and info.url.startswith('http')
+                and info.mimetype == 'image/jpeg'}
 
     def _read_physical_items(self) -> Dict[str, PhysicalItem]:
         """Create a map from physical IDs to (label, image_info) pairs."""
@@ -310,7 +315,29 @@ class MetsDocument:
 
     def _get_image_specs(self, file_elem: etree.Element) -> ImageInfo:
         image_id = file_elem.get('ID')
-        mimetype = file_elem.get('MIMETYPE')
+        mimetype = file_elem.get('MIMETYPE').replace('jpg', 'jpeg')
         location = self._xpath(
             "./mets:FLocat[@LOCTYPE='URL']/@xlink:href", file_elem)
         return ImageInfo(image_id, location[0] if location else None, mimetype)
+
+
+
+def get_basic_info(mets_url):
+    from .iiif import make_label
+    xml = requests.get(mets_url, allow_redirects=True).content
+    tree = etree.fromstring(xml)
+    doc = MetsDocument(tree, url=mets_url)
+    thumb_urls = doc._xpath(
+        ".//mets:file[@MIMETYPE='image/jpeg']/mets:FLocat/@xlink:href")
+    if not thumb_urls:
+        thumb_urls = doc._xpath(
+            ".//mets:file[@MIMETYPE='image/jpg']/mets:FLocat/@xlink:href")
+    return {
+        'metsurl': mets_url,
+        'label': make_label(doc.metadata),
+        'thumbnail': thumb_urls[0] if thumb_urls else None,
+        'attribution': {
+            'logo': doc.metadata['logo'],
+            'owner': doc.metadata['attribution']
+        }
+    }

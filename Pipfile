@@ -30,7 +30,6 @@ Flask-SQLAlchemy = "*"
 Flask-Script = "*"
 Flask-Autodoc = "*"
 Flask-Migrate = "*"
-validate_email = "*"
 
 [requires]
 python_version = "3.7"
@@ -39,3 +38,4 @@ python_version = "3.7"
 tests = "py.test tests"
 worker = "python3 manage.py worker"
 webapp = "gunicorn --reload --worker-class gevent -w 4 -b 0.0.0.0:5000 manage:app"
+manage = "python3 manage.py"
