@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "176a36c5d4ebe3a89141f429283af3d8dccf9087036fb2dd7ecd7b57f3d05a8f"
+            "sha256": "9c0b8dea71c7a557689271ffeac5fa4d8fadac84129d0f18e97bc0a92d48adf1"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -148,7 +148,7 @@
                 "sha256:d634a7ea1fc3380ff96f9e44d8d22f38418c1c381d5fac680b272d7d90883720",
                 "sha256:d97b0661e1aead761f0ded3b769044bb00ed5d33e1ec865e891a8b128bf7c656"
             ],
-            "markers": "platform_python_implementation == 'cpython'",
+            "index": "pypi",
             "version": "==0.4.15"
         },
         "gunicorn": {
@@ -437,9 +437,9 @@
         },
         "sqlalchemy": {
             "hashes": [
-                "sha256:ef6569ad403520ee13e180e1bfd6ed71a0254192a934ec1dbd3dbf48f4aa9524"
+                "sha256:c5951d9ef1d5404ed04bae5a16b60a0779087378928f997a294d1229c6ca4d3e"
             ],
-            "version": "==1.2.11"
+            "version": "==1.2.12"
         },
         "traitlets": {
             "hashes": [

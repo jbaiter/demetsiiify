@@ -30,6 +30,7 @@ Flask-SQLAlchemy = "*"
 Flask-Script = "*"
 Flask-Autodoc = "*"
 Flask-Migrate = "*"
+greenlet = "*"
 
 [requires]
 python_version = "3.7"
