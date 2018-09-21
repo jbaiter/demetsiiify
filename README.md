@@ -23,7 +23,7 @@ The service is **available at https://demetsiiify.jbaiter.de**
 `docker` and `docker-compose` on your machine. Then, follow these steps:
 
 1. Run `docker-compose up` to start the individual services
-2. Run `docker-compose run webapp python manage.py create` to initialise the database
+2. Run `docker-compose run webapp pipenv run manage create` to initialise the database
 
 You should then be able to reach the service at http://localhost:5000
 
