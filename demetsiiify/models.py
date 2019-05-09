@@ -249,6 +249,8 @@ class Annotation(db.Model):
         self.annotation = annotation
 
     def _extract_target(self, on):
+        if isinstance(on, list):
+            on = on[0]
         if isinstance(on, str):
             return on.split('#')[0]
         elif on['@type'] == 'oa:SpecificResource':
