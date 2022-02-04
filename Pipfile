@@ -22,14 +22,14 @@ requests = "*"
 "psycopg2-binary" = "*"
 redis = "*"
 alembic = "*"
-rq = "*"
+rq = "<1.0"
 "py3dns" = "*"
 ipython = "*"
 Flask = "<1.0"  # Needed so that autodoc works :-/
 Flask-SQLAlchemy = "*"
 Flask-Script = "*"
 Flask-Autodoc = "*"
-Flask-Migrate = "*"
+Flask-Migrate = "<3.0" # needed for MigrateCommand
 greenlet = "*"
 
 [requires]
