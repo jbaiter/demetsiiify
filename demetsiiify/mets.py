@@ -62,7 +62,7 @@ class TocEntry:
 
 
 class MetsParseError(Exception):
-    """An exception that occured while parsing a METS file."""
+    """An exception that occurred while parsing a METS file."""
 
     def __init__(self, message: str, debug_info: dict = None) -> None:
         super().__init__(message)
@@ -92,7 +92,7 @@ class MetsDocument:
         """Parse a METS document.
 
         This will read the metadata, table of contents and general
-        file informations. The width and heights of the images is
+        file information. The width and heights of the images is
         not determined.
         """
         self.url = url

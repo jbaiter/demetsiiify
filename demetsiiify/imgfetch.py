@@ -25,7 +25,7 @@ Progress = Tuple[int, int]
 
 
 class ImageDownloadError(Exception):
-    """An error that occured while downloading an image."""
+    """An error that occurred while downloading an image."""
 
     def __init__(self, message: str, debug_info: dict = None) -> None:
         super().__init__(message)
