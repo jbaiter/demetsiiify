@@ -58,11 +58,12 @@ def get_collection(collection_id='index', page_id='top'):
         manifest_pagination = collection.manifests.paginate(
             page=page_num, per_page=per_page)
         label = collection.label
+    coll_counts = 0
     if page_num == 1:
         coll_counts = Collection.get_child_collection_counts(collection_id)
     return jsonify(make_manifest_collection(
         manifest_pagination, label, collection_id, base_url=base_url,
-        page_num=page_num, coll_counts=coll_counts))
+        page_num=page_num, per_page=per_page, coll_counts=coll_counts))
 
 
 @iiif.route('/iiif/<path:manif_id>/manifest.json')
