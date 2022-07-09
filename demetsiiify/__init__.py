@@ -56,7 +56,7 @@ def create_app():
 
 def make_redis():
     redis = StrictRedis.from_url('redis://redis:6379/0')
-    # For our SSE endoint, we want to be notified of all changes to hashmaps
+    # For our SSE endpoint, we want to be notified of all changes to hashmaps
     # with a given key (i.e. when a job is updated)
     redis.config_set('notify-keyspace-events', 'Kh')
     return redis
